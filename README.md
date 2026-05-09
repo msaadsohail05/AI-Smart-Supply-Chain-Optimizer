@@ -15,6 +15,13 @@ End-to-end pipeline for extracting delivery constraints, building a weighted gra
 - OPENROUTESERVICE_API_KEY
 - OPENAI_MODEL (optional, default: gpt-4o-mini)
 
+Create a `.env` file at the repo root (see `.env.example`) and populate the keys.
+
+## Backend Setup
+```
+pip install -r backend/requirements.txt
+```
+
 ## Graph Format
 ```
 graph = {
