@@ -1,6 +1,7 @@
 from typing import Dict, List, Optional, Tuple
 
-from fastapi import FastAPI
+from fastapi import Body, FastAPI
+from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
 from services.astar_service import astar
@@ -8,6 +9,8 @@ from services.csp_service import validate
 from services.ga_service import genetic_algorithm
 from services.llm_service import parse_input
 from services.map_api_service import fetch_graph
+
+load_dotenv()
 
 app = FastAPI()
 
@@ -38,6 +41,11 @@ def root():
 @app.post("/extract")
 def extract_constraints(request: OptimizeRequest):
     return parse_input({"text": request.text or ""}, use_llm=request.use_llm)
+
+
+@app.post("/text")
+def parse_text(text: str = Body(..., embed=True), use_llm: bool = True):
+    return parse_input({"text": text}, use_llm=use_llm)
 
 
 @app.post("/route")
