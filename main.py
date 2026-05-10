@@ -1,10 +1,10 @@
 import os
 from typing import Dict, List, Optional, Tuple
 
-from fastapi import Body, FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException
 from dotenv import load_dotenv
 from pymongo import MongoClient
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from services.astar_service import astar
 from services.csp_service import validate
@@ -27,29 +27,19 @@ _collection = (
 )
 
 
-class OptimizeRequest(BaseModel):
-    text: Optional[str] = None
-    deliveries: Dict[str, int] = Field(default_factory=dict)
-    deadlines: Dict[str, str] = Field(default_factory=dict)
-    constraints: List[str] = Field(default_factory=list)
-    num_vehicles: int = 3
-    vehicle_capacity: int = 10
-    coordinates: Dict[str, Tuple[float, float]] = Field(default_factory=dict)
-    cost_per_km: float = 10
-    use_llm: bool = True
-    use_astar_for_costs: bool = False
-
-
 class UserInput(BaseModel):
     text: str
 
 
 class ProcessRequest(BaseModel):
-    coordinates: Dict[str, Tuple[float, float]]
+    coordinates: Optional[Dict[str, Tuple[float, float]]] = None
     cost_per_km: float = 10
     provider: str = "openrouteservice"
     profile: str = "driving-car"
     api_key: Optional[str] = None
+    num_vehicles: int = 3
+    vehicle_capacity: int = 10
+    use_astar_for_costs: bool = True
 
 
 class RouteRequest(BaseModel):
@@ -57,20 +47,10 @@ class RouteRequest(BaseModel):
     goal: str
     coordinates: Dict[str, Tuple[float, float]]
 
-
+#backend test code
 @app.get("/")
 def root():
     return {"status": "ok"}
-
-
-@app.post("/extract")
-def extract_constraints(request: OptimizeRequest):
-    return parse_input({"text": request.text or ""}, use_llm=request.use_llm)
-
-
-@app.post("/text")
-def parse_text(text: str = Body(..., embed=True), use_llm: bool = True):
-    return parse_input({"text": text}, use_llm=use_llm)
 
 #saad's code
 @app.post("/test-llm")
@@ -120,9 +100,13 @@ def process_llm_inputs(request: ProcessRequest):
         return {"error": "no_inputs"}
 
     payloads = [_strip_id(doc) for doc in docs]
-    locations = _locations_from_inputs(payloads)
-    if not locations:
-        return {"error": "no_locations"}
+    deliveries = _deliveries_from_inputs(payloads)
+    if not deliveries:
+        return {"error": "no_deliveries"}
+
+    deadlines = _deadlines_from_inputs(payloads, deliveries)
+
+    locations = ["Warehouse"] + list(deliveries.keys())
 
     provider_config = {
         "provider": request.provider,
@@ -134,10 +118,35 @@ def process_llm_inputs(request: ProcessRequest):
         provider_config["api_key"] = request.api_key
 
     graph = build_graph(locations, provider_config)
+    cost_lookup, time_lookup = _build_lookup_tables(graph)
+
+    if request.use_astar_for_costs:
+        cost_lookup = _build_astar_costs(
+            graph,
+            request.coordinates,
+            deliveries.keys(),
+        )
+
+    result = genetic_algorithm(
+        deliveries=deliveries,
+        cost_lookup=cost_lookup,
+        num_vehicles=request.num_vehicles,
+    )
+
+    is_valid = validate(
+        result["best_plan"],
+        deliveries,
+        request.vehicle_capacity,
+        deadlines=deadlines or None,
+        time_lookup=time_lookup if deadlines else None,
+    )
 
     return {
         "inputs": payloads,
-        "locations": locations,
+        "deliveries": deliveries,
+        "deadlines": deadlines,
+        "plan": result,
+        "valid": is_valid,
         "graph": graph,
     }
 
@@ -162,62 +171,6 @@ def route(request: RouteRequest):
     return astar(graph, request.start, request.goal, coordinates=request.coordinates)
 
 
-@app.post("/optimize")
-def optimize(request: OptimizeRequest):
-    extracted = {}
-    if request.text:
-        extracted = parse_input({"text": request.text}, use_llm=request.use_llm)
-
-    deliveries = dict(request.deliveries)
-    if not deliveries:
-        deliveries = _deliveries_from_extraction(extracted)
-
-    if not deliveries:
-        return {"error": "no_deliveries"}
-
-    deadlines = dict(request.deadlines)
-    if not deadlines and extracted.get("deadline"):
-        deadline_value = extracted.get("deadline")
-        deadlines = {destination: deadline_value for destination in deliveries.keys()}
-
-    locations = ["Warehouse"] + list(deliveries.keys())
-
-    graph = fetch_graph(
-        locations,
-        {
-            "provider": "openrouteservice",
-            "coordinates": request.coordinates,
-            "cost_per_km": request.cost_per_km,
-        },
-    )
-
-    cost_lookup, time_lookup = _build_lookup_tables(graph)
-
-    if request.use_astar_for_costs:
-        cost_lookup = _build_astar_costs(graph, request.coordinates, deliveries.keys())
-
-    result = genetic_algorithm(
-        deliveries=deliveries,
-        cost_lookup=cost_lookup,
-        num_vehicles=request.num_vehicles,
-    )
-
-    is_valid = validate(
-        result["best_plan"],
-        deliveries,
-        request.vehicle_capacity,
-        deadlines=deadlines or None,
-        time_lookup=time_lookup if deadlines else None,
-    )
-
-    return {
-        "extracted": extracted,
-        "deliveries": deliveries,
-        "plan": result,
-        "valid": is_valid,
-    }
-
-
 def _deliveries_from_extraction(extracted: Dict[str, object]) -> Dict[str, int]:
     destinations = extracted.get("destinations") or []
     packages = extracted.get("packages")
@@ -234,6 +187,31 @@ def _deliveries_from_extraction(extracted: Dict[str, object]) -> Dict[str, int]:
         return deliveries
 
     return {destination: 1 for destination in destinations}
+
+
+def _deliveries_from_inputs(items: List[Dict[str, object]]) -> Dict[str, int]:
+    merged: Dict[str, int] = {}
+    for item in items:
+        deliveries = _deliveries_from_extraction(item)
+        for destination, count in deliveries.items():
+            merged[destination] = merged.get(destination, 0) + count
+    return merged
+
+
+def _deadlines_from_inputs(
+    items: List[Dict[str, object]],
+    deliveries: Dict[str, int],
+) -> Dict[str, str]:
+    deadlines: Dict[str, str] = {}
+    for item in items:
+        deadline_value = item.get("deadline") if isinstance(item, dict) else None
+        destinations = item.get("destinations") if isinstance(item, dict) else None
+        if not deadline_value or not isinstance(destinations, list):
+            continue
+        for destination in destinations:
+            if destination in deliveries and destination not in deadlines:
+                deadlines[destination] = str(deadline_value)
+    return deadlines
 
 
 def _build_lookup_tables(graph: Dict[str, Dict[str, Dict[str, float]]]):
