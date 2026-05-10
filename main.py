@@ -1,12 +1,15 @@
+import os
 from typing import Dict, List, Optional, Tuple
 
-from fastapi import Body, FastAPI
+from fastapi import Body, FastAPI, HTTPException
 from dotenv import load_dotenv
+from pymongo import MongoClient
 from pydantic import BaseModel, Field
 
 from services.astar_service import astar
 from services.csp_service import validate
 from services.ga_service import genetic_algorithm
+from services.graph_service import build_graph
 from services.llm_service import parse_input
 from services.map_api_service import fetch_graph
 
@@ -14,17 +17,39 @@ load_dotenv()
 
 app = FastAPI()
 
+MONGO_URI = os.getenv("MONGO_URI")
+MONGO_DB = os.getenv("MONGO_DB", "ai_supply_chain")
+MONGO_COLLECTION = os.getenv("MONGO_COLLECTION", "delivery_inputs")
+
+_mongo_client = MongoClient(MONGO_URI) if MONGO_URI else None
+_collection = (
+    _mongo_client[MONGO_DB][MONGO_COLLECTION] if _mongo_client else None
+)
+
 
 class OptimizeRequest(BaseModel):
     text: Optional[str] = None
     deliveries: Dict[str, int] = Field(default_factory=dict)
     deadlines: Dict[str, str] = Field(default_factory=dict)
+    constraints: List[str] = Field(default_factory=list)
     num_vehicles: int = 3
     vehicle_capacity: int = 10
     coordinates: Dict[str, Tuple[float, float]] = Field(default_factory=dict)
     cost_per_km: float = 10
     use_llm: bool = True
     use_astar_for_costs: bool = False
+
+
+class UserInput(BaseModel):
+    text: str
+
+
+class ProcessRequest(BaseModel):
+    coordinates: Dict[str, Tuple[float, float]]
+    cost_per_km: float = 10
+    provider: str = "openrouteservice"
+    profile: str = "driving-car"
+    api_key: Optional[str] = None
 
 
 class RouteRequest(BaseModel):
@@ -46,6 +71,82 @@ def extract_constraints(request: OptimizeRequest):
 @app.post("/text")
 def parse_text(text: str = Body(..., embed=True), use_llm: bool = True):
     return parse_input({"text": text}, use_llm=use_llm)
+
+#saad's code
+@app.post("/test-llm")
+def test_llm(data: UserInput):
+    try:
+        result = parse_input(
+            data.text,
+            use_llm=True
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+    return {
+        "success": True,
+        "result": result
+    }
+
+#posting parsed LLM inputs to MongoDB and listing them back
+@app.post("/llm-inputs")
+def add_llm_input(data: UserInput):
+    collection = _get_collection()
+    try:
+        parsed = parse_input(data.text, use_llm=True)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+    result = collection.insert_one(parsed)
+    return {"success": True, "id": str(result.inserted_id),"parsed" : parsed}
+
+#displaying all parsed LLM inputs from MongoDB
+@app.get("/llm-inputs")
+def list_llm_inputs():
+    collection = _get_collection()
+    items = [_serialize_doc(doc) for doc in collection.find({})]
+    return {"items": items}
+
+#processing all parsed LLM inputs from MongoDB to build a graph
+@app.post("/llm-process")
+def process_llm_inputs(request: ProcessRequest):
+    collection = _get_collection()
+    docs = list(collection.find({}))
+    if not docs:
+        return {"error": "no_inputs"}
+
+    payloads = [_strip_id(doc) for doc in docs]
+    locations = _locations_from_inputs(payloads)
+    if not locations:
+        return {"error": "no_locations"}
+
+    provider_config = {
+        "provider": request.provider,
+        "coordinates": request.coordinates,
+        "cost_per_km": request.cost_per_km,
+        "profile": request.profile,
+    }
+    if request.api_key:
+        provider_config["api_key"] = request.api_key
+
+    graph = build_graph(locations, provider_config)
+
+    return {
+        "inputs": payloads,
+        "locations": locations,
+        "graph": graph,
+    }
+
+#delete all parsed LLM inputs from MongoDB
+@app.delete("/llm-inputs")
+def clear_llm_inputs():
+    collection = _get_collection()
+    result = collection.delete_many({})
+    return {"deleted": result.deleted_count}
 
 
 @app.post("/route")
@@ -165,3 +266,50 @@ def _build_astar_costs(
                 cost_lookup[(origin, destination)] = total_cost
 
     return cost_lookup
+
+
+def _get_collection():
+    if _collection is None:
+        raise HTTPException(status_code=500, detail="MongoDB is not configured")
+    return _collection
+
+
+def _serialize_doc(doc: Dict[str, object]) -> Dict[str, object]:
+    payload = dict(doc)
+    if "_id" in payload:
+        payload["_id"] = str(payload["_id"])
+    return payload
+
+
+def _strip_id(doc: Dict[str, object]) -> Dict[str, object]:
+    payload = dict(doc)
+    payload.pop("_id", None)
+    return payload
+
+
+def _locations_from_inputs(items: List[Dict[str, object]]) -> List[str]:
+    locations: List[str] = []
+    seen = set()
+    has_source = False
+
+    for item in items:
+        source = item.get("source") if isinstance(item, dict) else None
+        if isinstance(source, str) and source:
+            has_source = True
+            if source not in seen:
+                seen.add(source)
+                locations.append(source)
+
+        destinations = item.get("destinations") if isinstance(item, dict) else None
+        if isinstance(destinations, list):
+            for destination in destinations:
+                if isinstance(destination, str) and destination:
+                    if destination not in seen:
+                        seen.add(destination)
+                        locations.append(destination)
+
+    if not has_source and locations:
+        if "Warehouse" not in seen:
+            locations.insert(0, "Warehouse")
+
+    return locations
