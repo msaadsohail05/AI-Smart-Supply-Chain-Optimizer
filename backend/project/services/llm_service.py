@@ -19,6 +19,47 @@ def parse_input(data, use_llm=True, llm_config=None):
 	return _extract_with_llm(cleaned, llm_config or {})
 
 
+def summarize_plan(data, llm_config=None):
+	api_key = (llm_config or {}).get("api_key") or os.getenv("GROQ_API_KEY")
+	if not api_key:
+		raise ValueError("GROQ_API_KEY is not set")
+
+	model = (llm_config or {}).get("model") or os.getenv(
+		"GROQ_MODEL", "llama-3.3-70b-versatile"
+	)
+
+	from openai import OpenAI
+
+	client = OpenAI(
+		api_key=api_key,
+		base_url="https://api.groq.com/openai/v1",
+	)
+
+	system_prompt = (
+		"You are a logistics assistant. "
+		"Return a concise, user-friendly summary in bullet points only. "
+		"Include per-vehicle stops, vehicle type, route type, distance, time, and cost. "
+		"Also include total cost, total distance, total time, and whether the plan is valid. "
+		"Do not include raw JSON."
+	)
+
+	user_prompt = (
+		"Summarize this plan for a user. Use bullet points only:\n\n"
+		f"{json.dumps(data, ensure_ascii=True, indent=2)}"
+	)
+
+	response = client.chat.completions.create(
+		model=model,
+		messages=[
+			{"role": "system", "content": system_prompt},
+			{"role": "user", "content": user_prompt},
+		],
+		temperature=0,
+	)
+
+	return response.choices[0].message.content.strip()
+
+
 def _extract_with_llm(text, llm_config):
 	print("\nLLM FUNCTION CALLED")
 
