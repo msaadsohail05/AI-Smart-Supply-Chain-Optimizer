@@ -1,21 +1,21 @@
-# backend/project/services/csp_service.py
 import os
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
+
 
 WAREHOUSE_NAME = os.getenv("WAREHOUSE_NAME", "Central Warehouse Karachi")
 
 
 def validate(
-        plan: List[List[str]],
-        deliveries: Dict[str, int],
-        vehicle_plan: List[str],
-        route_plan: List[str],
-        deadlines: Optional[Dict[str, str]] = None,
-        distance_lookup: Optional[Dict[Tuple[str, str], float]] = None,
-        time_lookup: Optional[Dict[Tuple[str, str], float]] = None,
-        depot: str = None,
-        verbose: bool = True,
+    plan: List[List[str]],
+    deliveries: Dict[str, int],
+    vehicle_plan: List[str],
+    route_plan: List[str],
+    deadlines: Optional[Dict[str, str]] = None,
+    distance_lookup: Optional[Dict[Tuple[str, str], float]] = None,
+    time_lookup: Optional[Dict[Tuple[str, str], float]] = None,
+    depot: str = None,
+    verbose: bool = True,
 ) -> bool:
     """
     Validate a delivery plan against all constraints.
@@ -42,9 +42,9 @@ def validate(
     if not coverage_ok:
         if verbose:
             if missing:
-                print(f"   ❌ CSP: Missing locations: {missing}")
+                print(f"CSP: Missing locations: {missing}")
             if duplicates:
-                print(f"   ❌ CSP: Duplicate locations: {duplicates}")
+                print(f"CSP: Duplicate locations: {duplicates}")
         all_checks_passed = False
 
     # Check 2: Vehicle capacity constraints
@@ -52,7 +52,9 @@ def validate(
     if not capacity_ok:
         if verbose:
             for vehicle_idx, total, capacity in overloads:
-                print(f"   ❌ CSP: Vehicle {vehicle_idx + 1} overloaded: {total}/{capacity} packages")
+                print(
+                    f"CSP: Vehicle {vehicle_idx + 1} overloaded: {total}/{capacity} packages"
+                )
         all_checks_passed = False
 
     # Check 3: Deadline constraints (if provided)
@@ -63,7 +65,10 @@ def validate(
         if not deadlines_ok:
             if verbose:
                 for loc, eta, deadline in missed_deadlines:
-                    print(f"   ❌ CSP: Deadline missed for {loc}: ETA={eta:.0f}min, Deadline={deadline}min")
+                    print(
+                        f"CSP: Deadline missed for {loc}: ETA={eta:.0f}min, "
+                        f"Deadline={deadline}min"
+                    )
             all_checks_passed = False
 
     # Check 4: Route consistency
@@ -71,11 +76,11 @@ def validate(
     if not consistency_ok:
         if verbose:
             for orig, dest in invalid:
-                print(f"   ❌ CSP: Invalid route segment: {orig} → {dest}")
+                print(f"CSP: Invalid route segment: {orig} -> {dest}")
         all_checks_passed = False
 
     if all_checks_passed and verbose:
-        print("   ✅ CSP: All validation checks passed")
+        print("CSP: All validation checks passed")
 
     return all_checks_passed
 
@@ -98,9 +103,9 @@ def _check_coverage(plan: List[List[str]], deliveries: Dict[str, int]) -> Tuple[
 
 
 def _check_capacity(
-        plan: List[List[str]],
-        deliveries: Dict[str, int],
-        vehicle_plan: List[str]
+    plan: List[List[str]],
+    deliveries: Dict[str, int],
+    vehicle_plan: List[str],
 ) -> Tuple[bool, List[Tuple[int, int, int]]]:
     """Check that no vehicle exceeds its capacity."""
     vehicle_capacities = {
@@ -129,11 +134,11 @@ def _check_capacity(
 
 
 def _check_deadlines(
-        plan: List[List[str]],
-        deadlines: Dict[str, str],
-        distance_lookup: Optional[Dict[Tuple[str, str], float]],
-        time_lookup: Optional[Dict[Tuple[str, str], float]],
-        depot: str,
+    plan: List[List[str]],
+    deadlines: Dict[str, str],
+    distance_lookup: Optional[Dict[Tuple[str, str], float]],
+    time_lookup: Optional[Dict[Tuple[str, str], float]],
+    depot: str,
 ) -> Tuple[bool, List[Tuple[str, float, float]]]:
     """
     Check that all deadlines are met based on travel times.
@@ -143,7 +148,7 @@ def _check_deadlines(
     def get_travel_time(origin: str, destination: str) -> float:
         if time_lookup and (origin, destination) in time_lookup:
             return time_lookup[(origin, destination)]
-        elif distance_lookup and (origin, destination) in distance_lookup:
+        if distance_lookup and (origin, destination) in distance_lookup:
             # Estimate 2 minutes per km (30 km/h average speed)
             return distance_lookup[(origin, destination)] * 2
         return 0
@@ -208,7 +213,7 @@ def _parse_deadline(deadline: str) -> Optional[float]:
         pass
 
     # Try format like "2h" or "2.5h"
-    if deadline.endswith('h'):
+    if deadline.endswith("h"):
         try:
             hours = float(deadline[:-1])
             return hours * 60
@@ -217,12 +222,12 @@ def _parse_deadline(deadline: str) -> Optional[float]:
 
     # Try format like "14:30" or "2:30 PM"
     try:
-        if ' ' in deadline:
+        if " " in deadline:
             # Handle AM/PM
             dt = datetime.strptime(deadline, "%I:%M %p")
             return dt.hour * 60 + dt.minute
-        elif ':' in deadline:
-            parts = deadline.split(':')
+        if ":" in deadline:
+            parts = deadline.split(":")
             if len(parts) == 2:
                 hours = int(parts[0])
                 minutes = int(parts[1])
@@ -233,16 +238,15 @@ def _parse_deadline(deadline: str) -> Optional[float]:
     return None
 
 
-# Helper function to get validation details
 def validate_with_details(
-        plan: List[List[str]],
-        deliveries: Dict[str, int],
-        vehicle_plan: List[str],
-        route_plan: List[str],
-        deadlines: Optional[Dict[str, str]] = None,
-        distance_lookup: Optional[Dict[Tuple[str, str], float]] = None,
-        time_lookup: Optional[Dict[Tuple[str, str], float]] = None,
-        depot: str = None,
+    plan: List[List[str]],
+    deliveries: Dict[str, int],
+    vehicle_plan: List[str],
+    route_plan: List[str],
+    deadlines: Optional[Dict[str, str]] = None,
+    distance_lookup: Optional[Dict[Tuple[str, str], float]] = None,
+    time_lookup: Optional[Dict[Tuple[str, str], float]] = None,
+    depot: str = None,
 ) -> Dict:
     """
     Validate and return detailed results including what passed/failed.
@@ -252,7 +256,6 @@ def validate_with_details(
     """
     depot = depot or WAREHOUSE_NAME
 
-    # Run all checks
     coverage_ok, missing, duplicates = _check_coverage(plan, deliveries)
     capacity_ok, overloads = _check_capacity(plan, deliveries, vehicle_plan)
     deadlines_ok, missed_deadlines = True, []
@@ -262,6 +265,7 @@ def validate_with_details(
         deadlines_ok, missed_deadlines = _check_deadlines(
             plan, deadlines, distance_lookup, time_lookup, depot
         )
+
     return {
         "valid": coverage_ok and capacity_ok and deadlines_ok and consistency_ok,
         "checks": {
@@ -285,5 +289,5 @@ def validate_with_details(
                 {"from": orig, "to": dest}
                 for orig, dest in invalid
             ],
-        }
+        },
     }
