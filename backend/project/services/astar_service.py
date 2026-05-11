@@ -56,11 +56,13 @@ def astar(graph, start, goal, coordinates=None):
             if not isinstance(edge, dict):
                 continue
 
-            edge_cost = edge.get("cost")
-            if edge_cost is None:
+            edge_distance = edge.get("distance")
+            if edge_distance is None:
+                edge_distance = edge.get("cost")
+            if edge_distance is None:
                 continue
 
-            tentative_g = g_costs[current] + edge_cost
+            tentative_g = g_costs[current] + edge_distance
             if tentative_g < g_costs.get(neighbor, float("inf")):
                 came_from[neighbor] = current
                 g_costs[neighbor] = tentative_g
