@@ -48,6 +48,7 @@ def _extract_with_llm(text, llm_config):
 		"- ALWAYS extract package counts if mentioned (e.g., '2 packages') "
 		"- constraints MUST include ANY descriptive logistics information such as: "
 		"fragile goods, medical supplies, temperature-sensitive cargo, refrigerated transport, urgency, road restrictions "
+		"- Do NOT add 'partial load splitting' unless the user explicitly mentions it "
 		"- If a field is not present, use null (NOT empty string, NOT missing key) "
 		"- destinations MUST always be a list "
 		"- constraints MUST always be a list (even empty) "
