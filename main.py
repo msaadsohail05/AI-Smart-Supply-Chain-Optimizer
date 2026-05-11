@@ -1,7 +1,6 @@
 import os
 from typing import Dict, List, Optional, Tuple
 
-
 from fastapi import FastAPI, HTTPException
 from dotenv import load_dotenv
 from pymongo import MongoClient
