@@ -8,12 +8,18 @@ from pydantic import BaseModel
 
 from services.astar_service import astar
 from services.csp_service import validate
-from services.ga_service import genetic_algorithm
+from services.ga_service import (
+    genetic_algorithm,
+    normalize_route_type,
+    normalize_vehicle_type,
+)
 from services.graph_service import build_graph
-from services.llm_service import parse_input
+from services.llm_service import parse_input, summarize_plan
 from services.map_api_service import fetch_graph
 
 load_dotenv()
+
+WAREHOUSE_NAME = os.getenv("WAREHOUSE_NAME", "Central Warehouse Karachi")
 
 app = FastAPI()
 
@@ -32,7 +38,7 @@ class UserInput(BaseModel):
 
 
 class ProcessRequest(BaseModel):
-    coordinates: Optional[Dict[str, Tuple[float, float]]] = None
+    coordinates: Optional[Dict[str, Tuple[Optional[float], Optional[float]]]] = None
     cost_per_km: float = 10
     provider: str = "openrouteservice"
     profile: str = "driving-car"
@@ -81,8 +87,13 @@ def add_llm_input(data: UserInput):
     except Exception as exc:
         raise HTTPException(status_code=500, detail="Internal server error") from exc
 
-    result = collection.insert_one(parsed)
-    return {"success": True, "id": str(result.inserted_id),"parsed" : parsed}
+    payload = dict(parsed)
+    result = collection.insert_one(payload)
+    return {
+        "success": True,
+        "id": str(result.inserted_id),
+        "parsed": parsed,
+    }
 
 #displaying all parsed LLM inputs from MongoDB
 @app.get("/llm-inputs")
@@ -92,63 +103,24 @@ def list_llm_inputs():
     return {"items": items}
 
 #processing all parsed LLM inputs from MongoDB to build a graph
-@app.post("/llm-process")
-def process_llm_inputs(request: ProcessRequest):
-    collection = _get_collection()
-    docs = list(collection.find({}))
-    if not docs:
-        return {"error": "no_inputs"}
-
-    payloads = [_strip_id(doc) for doc in docs]
-    deliveries = _deliveries_from_inputs(payloads)
-    if not deliveries:
-        return {"error": "no_deliveries"}
-
-    deadlines = _deadlines_from_inputs(payloads, deliveries)
-
-    locations = ["Warehouse"] + list(deliveries.keys())
-
-    provider_config = {
-        "provider": request.provider,
-        "coordinates": request.coordinates,
-        "cost_per_km": request.cost_per_km,
-        "profile": request.profile,
+@app.get("/llm-process")
+def process_llm_inputs():
+    pipeline = _run_llm_pipeline(ProcessRequest())
+    summary_payload = {
+        "inputs": pipeline["inputs"],
+        "deliveries": pipeline["deliveries"],
+        "deadlines": pipeline["deadlines"],
+        "plan": pipeline["plan"],
+        "valid": pipeline["valid"],
     }
-    if request.api_key:
-        provider_config["api_key"] = request.api_key
+    try:
+        summary = summarize_plan(summary_payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
-    graph = build_graph(locations, provider_config)
-    cost_lookup, time_lookup = _build_lookup_tables(graph)
-
-    if request.use_astar_for_costs:
-        cost_lookup = _build_astar_costs(
-            graph,
-            request.coordinates,
-            deliveries.keys(),
-        )
-
-    result = genetic_algorithm(
-        deliveries=deliveries,
-        cost_lookup=cost_lookup,
-        num_vehicles=request.num_vehicles,
-    )
-
-    is_valid = validate(
-        result["best_plan"],
-        deliveries,
-        request.vehicle_capacity,
-        deadlines=deadlines or None,
-        time_lookup=time_lookup if deadlines else None,
-    )
-
-    return {
-        "inputs": payloads,
-        "deliveries": deliveries,
-        "deadlines": deadlines,
-        "plan": result,
-        "valid": is_valid,
-        "graph": graph,
-    }
+    return {"summary": summary}
 
 #delete all parsed LLM inputs from MongoDB
 @app.delete("/llm-inputs")
@@ -215,35 +187,196 @@ def _deadlines_from_inputs(
 
 
 def _build_lookup_tables(graph: Dict[str, Dict[str, Dict[str, float]]]):
-    cost_lookup: Dict[Tuple[str, str], float] = {}
+    distance_lookup: Dict[Tuple[str, str], float] = {}
     time_lookup: Dict[Tuple[str, str], float] = {}
 
     for origin, neighbors in graph.items():
         for destination, metrics in neighbors.items():
-            cost_lookup[(origin, destination)] = metrics.get("cost", 0)
+            distance_lookup[(origin, destination)] = metrics.get("distance", 0)
             time_lookup[(origin, destination)] = metrics.get("time", 0)
 
-    return cost_lookup, time_lookup
+    return distance_lookup, time_lookup
 
 
-def _build_astar_costs(
+def _build_astar_distances(
     graph: Dict[str, Dict[str, Dict[str, float]]],
-    coordinates: Dict[str, Tuple[float, float]],
+    coordinates: Optional[Dict[str, Tuple[float, float]]],
     destinations,
 ):
-    cost_lookup: Dict[Tuple[str, str], float] = {}
-    nodes = ["Warehouse"] + list(destinations)
+    distance_lookup: Dict[Tuple[str, str], float] = {}
+    nodes = [WAREHOUSE_NAME] + list(destinations)
 
     for origin in nodes:
         for destination in nodes:
             if origin == destination:
                 continue
             result = astar(graph, origin, destination, coordinates)
-            total_cost = result.get("total_cost") if isinstance(result, dict) else None
-            if total_cost is not None:
-                cost_lookup[(origin, destination)] = total_cost
+            total_distance = result.get("total_distance") if isinstance(result, dict) else None
+            if total_distance is not None:
+                distance_lookup[(origin, destination)] = total_distance
 
-    return cost_lookup
+    return distance_lookup
+
+
+def _sanitize_coordinates(
+    coordinates: Optional[Dict[str, Tuple[Optional[float], Optional[float]]]]
+) -> Optional[Dict[str, Tuple[float, float]]]:
+    if not coordinates:
+        return None
+
+    cleaned: Dict[str, Tuple[float, float]] = {}
+    for key, value in coordinates.items():
+        if not isinstance(value, (list, tuple)) or len(value) != 2:
+            continue
+        lat, lon = value
+        if isinstance(lat, (int, float)) and isinstance(lon, (int, float)):
+            cleaned[str(key)] = (float(lat), float(lon))
+
+    return cleaned or None
+
+
+def _run_llm_pipeline(request: ProcessRequest) -> Dict[str, object]:
+    collection = _get_collection()
+    docs = list(collection.find({}))
+    if not docs:
+        return {"error": "no_inputs"}
+
+    payloads = [_strip_id(doc) for doc in docs]
+    deliveries = _deliveries_from_inputs(payloads)
+    if not deliveries:
+        return {"error": "no_deliveries"}
+
+    deadlines = _deadlines_from_inputs(payloads, deliveries)
+
+    locations = [WAREHOUSE_NAME] + list(deliveries.keys())
+
+    coordinates = _sanitize_coordinates(request.coordinates)
+
+    provider_config = {
+        "provider": request.provider,
+        "coordinates": coordinates,
+        "cost_per_km": request.cost_per_km,
+        "profile": request.profile,
+    }
+    if request.api_key:
+        provider_config["api_key"] = request.api_key
+
+    graph = build_graph(locations, provider_config)
+    distance_lookup, time_lookup = _build_lookup_tables(graph)
+
+    if request.use_astar_for_costs:
+        distance_lookup = _build_astar_distances(
+            graph,
+            coordinates,
+            deliveries.keys(),
+        )
+
+    budget, time_limit, priority, constraints, fixed_vehicle, fixed_route = _plan_inputs(
+        payloads
+    )
+
+    result = genetic_algorithm(
+        deliveries=deliveries,
+        distance_lookup=distance_lookup,
+        num_vehicles=request.num_vehicles,
+        budget=budget,
+        time_limit=time_limit,
+        priority=priority,
+        constraints=constraints,
+        fixed_vehicle=fixed_vehicle,
+        fixed_route=fixed_route,
+    )
+
+    is_valid = validate(
+        result["best_plan"],
+        deliveries,
+        result["vehicle_plan"],
+        result["route_plan"],
+        deadlines=deadlines or None,
+        distance_lookup=distance_lookup if deadlines else None,
+    )
+
+    return {
+        "inputs": payloads,
+        "deliveries": deliveries,
+        "deadlines": deadlines,
+        "plan": result,
+        "valid": is_valid,
+        "graph": graph,
+    }
+
+
+def _plan_inputs(items: List[Dict[str, object]]):
+    budgets = _collect_numbers(items, ["budget"])
+    time_limits = _collect_numbers(items, ["time_hrs", "time_limit"])
+    priority = _priority_from_inputs(items)
+    constraints = _constraints_from_inputs(items)
+    fixed_vehicle = _fixed_vehicle_from_inputs(items)
+    fixed_route = _fixed_route_from_inputs(items)
+
+    budget = min(budgets) if budgets else None
+    time_limit = min(time_limits) if time_limits else None
+    return budget, time_limit, priority, constraints, fixed_vehicle, fixed_route
+
+
+def _collect_numbers(items: List[Dict[str, object]], keys: List[str]) -> List[float]:
+    values: List[float] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        for key in keys:
+            value = item.get(key)
+            if isinstance(value, (int, float)):
+                values.append(float(value))
+    return values
+
+
+def _priority_from_inputs(items: List[Dict[str, object]]) -> str:
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        objective = item.get("objective")
+        if isinstance(objective, str) and "time" in objective.lower():
+            return "time"
+    return "cost"
+
+
+def _constraints_from_inputs(items: List[Dict[str, object]]) -> List[str]:
+    merged: List[str] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        for key in ("constraints", "extra_constraints"):
+            value = item.get(key)
+            if isinstance(value, list):
+                for entry in value:
+                    if isinstance(entry, str):
+                        merged.append(entry)
+    return merged
+
+
+def _fixed_vehicle_from_inputs(items: List[Dict[str, object]]) -> Optional[str]:
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        vehicle_type = item.get("vehicle_type")
+        if isinstance(vehicle_type, str):
+            normalized = normalize_vehicle_type(vehicle_type)
+            if normalized:
+                return normalized
+    return None
+
+
+def _fixed_route_from_inputs(items: List[Dict[str, object]]) -> Optional[str]:
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        route_type = item.get("route") or item.get("route_type")
+        if isinstance(route_type, str):
+            normalized = normalize_route_type(route_type)
+            if normalized:
+                return normalized
+    return None
 
 
 def _get_collection():
@@ -287,7 +420,7 @@ def _locations_from_inputs(items: List[Dict[str, object]]) -> List[str]:
                         locations.append(destination)
 
     if not has_source and locations:
-        if "Warehouse" not in seen:
-            locations.insert(0, "Warehouse")
+        if WAREHOUSE_NAME not in seen:
+            locations.insert(0, WAREHOUSE_NAME)
 
     return locations
