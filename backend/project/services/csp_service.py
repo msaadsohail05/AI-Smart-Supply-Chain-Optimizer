@@ -262,7 +262,6 @@ def validate_with_details(
         deadlines_ok, missed_deadlines = _check_deadlines(
             plan, deadlines, distance_lookup, time_lookup, depot
         )
-
     return {
         "valid": coverage_ok and capacity_ok and deadlines_ok and consistency_ok,
         "checks": {
