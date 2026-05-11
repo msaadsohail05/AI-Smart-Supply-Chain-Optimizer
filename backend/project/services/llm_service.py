@@ -1,166 +1,158 @@
+"""Service for fetching real-world map data using OpenRouteService."""
+
 import json
 import os
+import urllib.parse
+import urllib.request
 
 
-def parse_input(data, use_llm=True, llm_config=None):
-	if data is None:
-		return {}
-
-	if isinstance(data, dict):
-		text = str(data.get("text", ""))
-	else:
-		text = str(data)
-
-	cleaned = " ".join(text.strip().split())
-
-	if not use_llm:
-		raise ValueError("LLM mode is required. Regex fallback removed.")
-
-	return _extract_with_llm(cleaned, llm_config or {})
+ORS_BASE_URL = "https://api.openrouteservice.org"
 
 
-def summarize_plan(data, llm_config=None):
-	api_key = (llm_config or {}).get("api_key") or os.getenv("GROQ_API_KEY")
-	if not api_key:
-		raise ValueError("GROQ_API_KEY is not set")
-
-	model = (llm_config or {}).get("model") or os.getenv(
-		"GROQ_MODEL", "llama-3.3-70b-versatile"
-	)
-
-	from openai import OpenAI
-
-	client = OpenAI(
-		api_key=api_key,
-		base_url="https://api.groq.com/openai/v1",
-	)
-
-	system_prompt = (
-		"You are a logistics assistant. "
-		"Return a concise, user-friendly summary in bullet points only. "
-		"Include per-vehicle stops, vehicle type, route type, distance, time, and cost. "
-		"Also include total cost, total distance, total time, and whether the plan is valid. "
-		"Do not include raw JSON."
-	)
-
-	user_prompt = (
-		"Summarize this plan for a user. Use bullet points only:\n\n"
-		f"{json.dumps(data, ensure_ascii=True, indent=2)}"
-	)
-
-	response = client.chat.completions.create(
-		model=model,
-		messages=[
-			{"role": "system", "content": system_prompt},
-			{"role": "user", "content": user_prompt},
-		],
-		temperature=0,
-	)
-
-	return response.choices[0].message.content.strip()
+def fetch_route_costs(locations, provider_config=None):
+    graph = fetch_graph(locations, provider_config)
+    costs = {}
+    for origin, neighbors in graph.items():
+        for destination, metrics in neighbors.items():
+            costs[(origin, destination)] = metrics.get("cost")
+    return costs
 
 
-def _extract_with_llm(text, llm_config):
-	print("\nLLM FUNCTION CALLED")
+def fetch_graph(locations, provider_config=None):
+    provider_config = provider_config or {}
+    provider = provider_config.get("provider", "openrouteservice")
+    if provider != "openrouteservice":
+        raise ValueError("Unsupported provider")
 
-	api_key = llm_config.get("api_key") or os.getenv("GROQ_API_KEY")
-	if not api_key:
-		raise ValueError("GROQ_API_KEY is not set")
+    api_key = provider_config.get("api_key") or os.getenv("OPENROUTESERVICE_API_KEY")
+    if not api_key:
+        raise ValueError("OPENROUTESERVICE_API_KEY is not set")
 
-	model = llm_config.get("model") or os.getenv(
-		"GROQ_MODEL", "llama-3.3-70b-versatile"
-	)
+    coordinates = provider_config.get("coordinates")
 
-	from openai import OpenAI
+    if not locations:
+        locations = list(coordinates.keys())
 
-	client = OpenAI(
-		api_key=api_key,
-		base_url="https://api.groq.com/openai/v1"
-	)
+    profile = provider_config.get("profile", "driving-car")
+    cost_per_km = provider_config.get("cost_per_km", 10)
 
-	system_prompt = (
-		"You are a strict logistics data extraction engine. "
-		"Your job is to extract ALL structured fields from user input. "
-		"Return ONLY valid JSON with these keys: "
-		"source, destinations, deadline, budget, objective, "
-		"packages, vehicle_type, avoid, constraints. "
-		"STRICT RULES: "
-		"- NEVER omit numeric values (if mentioned, extract them exactly) "
-		"- ALWAYS extract package counts if mentioned (e.g., '2 packages') "
-		"- constraints MUST include ANY descriptive logistics information such as: "
-		"fragile goods, medical supplies, temperature-sensitive cargo, refrigerated transport, urgency, road restrictions "
-		"- Do NOT add 'partial load splitting' unless the user explicitly mentions it "
-		"- If a field is not present, use null (NOT empty string, NOT missing key) "
-		"- destinations MUST always be a list "
-		"- constraints MUST always be a list (even empty) "
-	)
-
-	user_prompt = f"""
-	Extract ALL logistics information from this text:
-
-	{text}
-
-	Make sure to:
-	- extract package count if present
-	- extract all constraints (fragile, medical, temperature-sensitive, urgency)
-	- extract transport type if mentioned
-
-	Return ONLY valid JSON.
-	"""
-
-	response = client.chat.completions.create(
-		model=model,
-		messages=[
-			{"role": "system", "content": system_prompt},
-			{"role": "user", "content": user_prompt},
-		],
-		temperature=0
-	)
-
-	content = response.choices[0].message.content
-	print("LLM RAW RESPONSE:", content)
-
-	return _safe_json_loads(content)
+    return _fetch_graph_openrouteservice(
+        locations=locations,
+        coordinates=coordinates,
+        api_key=api_key,
+        profile=profile,
+        cost_per_km=cost_per_km,
+    )
 
 
-def _safe_json_loads(value):
-	if value is None:
-		raise ValueError("Empty response from LLM")
+def _fetch_graph_openrouteservice(locations, coordinates, api_key, profile, cost_per_km):
+    if not coordinates:
+        coordinates = _geocode_locations(locations, api_key)
 
-	cleaned = _extract_json_string(str(value))
-	if not cleaned:
-		raise ValueError(f"Invalid JSON returned by LLM:\n{value}")
+    coords_list = []
+    for name in locations:
+        if name not in coordinates:
+            raise ValueError(f"Missing coordinates for {name}")
+        coords_list.append(list(coordinates[name]))
 
-	try:
-		return json.loads(cleaned)
-	except json.JSONDecodeError:
-		raise ValueError(f"Invalid JSON returned by LLM:\n{value}")
+    graph = {}
+    for i, origin in enumerate(locations):
+        for j, destination in enumerate(locations):
+            if i == j:
+                continue
+
+            start = coordinates[origin]
+            end = coordinates[destination]
+            summary = _fetch_directions_summary(start, end, api_key, profile)
+            if not summary:
+                continue
+
+            distance_km = summary["distance_km"]
+            duration_min = summary["duration_min"]
+
+            graph.setdefault(origin, {})[destination] = {
+                "distance": distance_km,
+                "time": duration_min,
+                "cost": distance_km * cost_per_km,
+            }
+
+    return graph
 
 
-def _extract_json_string(value):
-	text = value.strip()
-	if not text:
-		return ""
+def _post_json(url, payload, api_key):
+    data = json.dumps(payload).encode("utf-8")
+    request = urllib.request.Request(
+        url,
+        data=data,
+        headers={
+            "Authorization": api_key,
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
 
-	if text.startswith("```"):
-		lines = text.splitlines()
-		if lines and lines[0].startswith("```"):
-			lines = lines[1:]
-		if lines and lines[-1].startswith("```"):
-			lines = lines[:-1]
-		text = "\n".join(lines).strip()
+    with urllib.request.urlopen(request) as response:
+        return json.loads(response.read().decode("utf-8"))
 
-	if text.startswith("{") or text.startswith("["):
-		return text
 
-	obj_start = text.find("{")
-	obj_end = text.rfind("}")
-	if obj_start != -1 and obj_end != -1 and obj_end > obj_start:
-		return text[obj_start:obj_end + 1].strip()
+def _get_json(url, api_key):
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Authorization": api_key,
+            "Content-Type": "application/json",
+        },
+        method="GET",
+    )
 
-	arr_start = text.find("[")
-	arr_end = text.rfind("]")
-	if arr_start != -1 and arr_end != -1 and arr_end > arr_start:
-		return text[arr_start:arr_end + 1].strip()
+    with urllib.request.urlopen(request) as response:
+        return json.loads(response.read().decode("utf-8"))
 
-	return ""
+
+def _geocode_locations(locations, api_key):
+    coordinates = {}
+    for name in locations:
+        coordinates[name] = _geocode_location(name, api_key)
+    return coordinates
+
+
+def _geocode_location(name, api_key):
+    query = urllib.parse.quote(name)
+    url = f"{ORS_BASE_URL}/geocode/search?api_key={api_key}&text={query}"
+    response_data = _get_json(url, api_key)
+    features = response_data.get("features") or []
+    if not features:
+        raise ValueError(f"No geocode results for {name}")
+
+    coords = features[0].get("geometry", {}).get("coordinates")
+    if not coords or len(coords) < 2:
+        raise ValueError(f"Invalid geocode response for {name}")
+
+    return (coords[0], coords[1])
+
+
+def _fetch_directions_summary(start, end, api_key, profile):
+    if not start or not end:
+        return None
+
+    start_param = f"{start[0]},{start[1]}"
+    end_param = f"{end[0]},{end[1]}"
+    url = (
+        f"{ORS_BASE_URL}/v2/directions/{profile}"
+        f"?api_key={api_key}&start={start_param}&end={end_param}"
+    )
+    response_data = _get_json(url, api_key)
+    features = response_data.get("features") or []
+    if not features:
+        return None
+
+    summary = features[0].get("properties", {}).get("summary") or {}
+    distance_m = summary.get("distance")
+    duration_s = summary.get("duration")
+    if distance_m is None or duration_s is None:
+        return None
+
+    return {
+        "distance_km": distance_m / 1000,
+        "duration_min": duration_s / 60,
+    }
