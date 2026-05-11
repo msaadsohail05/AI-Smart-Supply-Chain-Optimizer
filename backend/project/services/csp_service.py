@@ -1,24 +1,41 @@
+import os
 from typing import Dict, List, Optional, Tuple
+
+from services.ga_service import ROUTES, VEHICLES
+
+WAREHOUSE_NAME = os.getenv("WAREHOUSE_NAME", "Central Warehouse Karachi")
 
 
 def validate(
     plan: List[List[str]],
     deliveries: Dict[str, int],
-    capacity: int,
+    vehicle_plan: List[str],
+    route_plan: List[str],
     deadlines: Optional[Dict[str, str]] = None,
-    time_lookup: Optional[Dict[Tuple[str, str], float]] = None,
+    distance_lookup: Optional[Dict[Tuple[str, str], float]] = None,
     start_time: int = 0,
-    depot: str = "Warehouse",
+    depot: str = WAREHOUSE_NAME,
 ) -> bool:
-    if capacity <= 0:
+    if len(vehicle_plan) != len(plan) or len(route_plan) != len(plan):
         return False
 
     required = set(deliveries.keys())
     assigned = []
 
-    for route in plan:
+    for index, route in enumerate(plan):
         if not route:
             continue
+
+        vehicle_type = vehicle_plan[index]
+        route_type = route_plan[index]
+        vehicle_meta = VEHICLES.get(vehicle_type)
+        route_meta = ROUTES.get(route_type)
+        if not vehicle_meta or not route_meta:
+            return False
+
+        capacity = vehicle_meta["capacity"]
+        speed = vehicle_meta["speed"]
+        factor = route_meta["factor"]
 
         total = 0
         current_time = start_time
@@ -30,14 +47,14 @@ def validate(
             assigned.append(loc)
 
             if deadlines is not None:
-                if time_lookup is None:
+                if distance_lookup is None:
                     return False
 
-                travel_time = time_lookup.get((current_node, loc))
-                if travel_time is None:
+                distance = distance_lookup.get((current_node, loc))
+                if distance is None:
                     return False
 
-                current_time += travel_time
+                current_time += (distance / speed) * 60 * factor
                 deadline_value = deadlines.get(loc)
                 if deadline_value is None:
                     return False
