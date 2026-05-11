@@ -275,26 +275,41 @@ def _run_llm_pipeline(request: ProcessRequest) -> Dict[str, object]:
         payloads
     )
 
-    result = genetic_algorithm(
-        deliveries=deliveries,
-        distance_lookup=distance_lookup,
-        num_vehicles=request.num_vehicles,
-        budget=budget,
-        time_limit=time_limit,
-        priority=priority,
-        constraints=constraints,
-        fixed_vehicle=fixed_vehicle,
-        fixed_route=fixed_route,
-    )
+    ga_attempts = int(os.getenv("GA_ATTEMPTS", "5"))
+    candidates = []
+    for _ in range(max(1, ga_attempts)):
+        candidate = genetic_algorithm(
+            deliveries=deliveries,
+            distance_lookup=distance_lookup,
+            num_vehicles=request.num_vehicles,
+            budget=budget,
+            time_limit=time_limit,
+            priority=priority,
+            constraints=constraints,
+            fixed_vehicle=fixed_vehicle,
+            fixed_route=fixed_route,
+        )
+        is_valid = validate(
+            candidate["best_plan"],
+            deliveries,
+            candidate["vehicle_plan"],
+            candidate["route_plan"],
+            deadlines=deadlines or None,
+            distance_lookup=distance_lookup if deadlines else None,
+        )
+        candidates.append((candidate, is_valid))
 
-    is_valid = validate(
-        result["best_plan"],
-        deliveries,
-        result["vehicle_plan"],
-        result["route_plan"],
-        deadlines=deadlines or None,
-        distance_lookup=distance_lookup if deadlines else None,
-    )
+    valid_candidates = [item for item in candidates if item[1]]
+    if valid_candidates:
+        result, is_valid = min(
+            valid_candidates,
+            key=lambda item: item[0].get("fitness_score", float("inf")),
+        )
+    else:
+        result, is_valid = min(
+            candidates,
+            key=lambda item: item[0].get("fitness_score", float("inf")),
+        )
 
     return {
         "inputs": payloads,
