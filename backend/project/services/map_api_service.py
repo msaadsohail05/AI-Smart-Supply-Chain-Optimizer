@@ -12,6 +12,15 @@ _GEOCODE_CACHE = {}
 _DIRECTIONS_CACHE = {}
 _LAST_REQUEST_TS = 0.0
 
+# Karachi bounding box (lat, lon)
+# Min: 24.7°N, 66.9°E | Max: 25.3°N, 67.4°E
+KARACHI_BBOX = {
+    "min_lat": 24.7,
+    "max_lat": 25.3,
+    "min_lon": 66.9,
+    "max_lon": 67.4
+}
+
 
 def _throttle_requests():
     global _LAST_REQUEST_TS
@@ -165,42 +174,94 @@ def _get_json(url, api_key):
 
 
 def _geocode_locations(locations, api_key, geocode_country):
+    """Geocode locations with Karachi, Pakistan appended to each location."""
     coordinates = {}
+    
     for name in locations:
-        coordinates[name] = _geocode_location(name, api_key, geocode_country)
+        # Append "Karachi, Pakistan" to every location to ensure results are within Karachi
+        enhanced_name = f"{name}, Karachi, Pakistan"
+        print(f"📍 Geocoding: '{name}' -> '{enhanced_name}'")
+        
+        try:
+            coords = _geocode_location_with_karachi_bias(enhanced_name, api_key, geocode_country)
+            coordinates[name] = coords
+            print(f"   ✅ Got coordinates: {coords}")
+        except Exception as e:
+            print(f"   ❌ Geocoding failed for {name}: {e}")
+            # Use Karachi center as fallback
+            coordinates[name] = (24.8607, 67.0011)  # Karachi center
+            print(f"   📍 Using fallback (Karachi center): {coordinates[name]}")
+    
     return coordinates
 
 
-def _geocode_location(name, api_key, geocode_country):
+def _geocode_location_with_karachi_bias(name, api_key, geocode_country):
+    """Geocode a single location with bias toward Karachi using bounding box."""
     query = urllib.parse.quote(name)
     country = urllib.parse.quote(str(geocode_country)) if geocode_country else ""
+    
+    # Build URL with Karachi bounding box to bias results
     url = f"{ORS_BASE_URL}/geocode/search?api_key={api_key}&text={query}"
+    
     if country:
         url = f"{url}&boundary.country={country}"
-    cache_key = (name, geocode_country)
+    
+    # Add Karachi bounding box to restrict search to Karachi area
+    url = f"{url}&boundary.rect.min_lon={KARACHI_BBOX['min_lon']}"
+    url = f"{url}&boundary.rect.max_lon={KARACHI_BBOX['max_lon']}"
+    url = f"{url}&boundary.rect.min_lat={KARACHI_BBOX['min_lat']}"
+    url = f"{url}&boundary.rect.max_lat={KARACHI_BBOX['max_lat']}"
+    
+    # Add focus point to Karachi center for better results
+    url = f"{url}&focus.point.lon=67.0011"
+    url = f"{url}&focus.point.lat=24.8607"
+    
+    cache_key = (name, geocode_country, "karachi_bias")
     if cache_key in _GEOCODE_CACHE:
         return _GEOCODE_CACHE[cache_key]
 
-    response_data = _get_json_with_retry(url, api_key)
-    features = response_data.get("features") or []
-    if not features:
-        raise ValueError(f"No geocode results for {name}")
+    try:
+        response_data = _get_json_with_retry(url, api_key)
+        features = response_data.get("features") or []
+        
+        if not features:
+            # Try without bounding box as fallback
+            print(f"   ⚠️ No results with bounding box, trying without...")
+            url_fallback = f"{ORS_BASE_URL}/geocode/search?api_key={api_key}&text={query}"
+            if country:
+                url_fallback = f"{url_fallback}&boundary.country={country}"
+            response_data = _get_json_with_retry(url_fallback, api_key)
+            features = response_data.get("features") or []
+        
+        if not features:
+            raise ValueError(f"No geocode results for {name}")
+        
+        coords = features[0].get("geometry", {}).get("coordinates")
+        if not coords or len(coords) < 2:
+            raise ValueError(f"Invalid geocode response for {name}")
+        
+        # Return as (lat, lon) - OpenRouteService returns (lon, lat)
+        result = (coords[1], coords[0])
+        _GEOCODE_CACHE[cache_key] = result
+        return result
+        
+    except Exception as e:
+        raise ValueError(f"Geocoding failed for {name}: {str(e)}")
 
-    coords = features[0].get("geometry", {}).get("coordinates")
-    if not coords or len(coords) < 2:
-        raise ValueError(f"Invalid geocode response for {name}")
 
-    result = (coords[0], coords[1])
-    _GEOCODE_CACHE[cache_key] = result
-    return result
+def _geocode_location(name, api_key, geocode_country):
+    """Original geocode function - now calls the Karachi-biased version."""
+    return _geocode_location_with_karachi_bias(name, api_key, geocode_country)
 
 
 def _fetch_directions_summary(start, end, api_key, profile):
     if not start or not end:
         return None
 
-    start_param = f"{start[0]},{start[1]}"
-    end_param = f"{end[0]},{end[1]}"
+    # OpenRouteService expects (lon, lat) format, but we have (lat, lon)
+    start_param = f"{start[1]},{start[0]}"  # Convert to lon,lat
+    end_param = f"{end[1]},{end[0]}"        # Convert to lon,lat
+    
     url = (
         f"{ORS_BASE_URL}/v2/directions/{profile}"
         f"?api_key={api_key}&start={start_param}&end={end_param}"
