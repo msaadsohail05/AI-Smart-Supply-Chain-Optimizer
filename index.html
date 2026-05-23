@@ -3,615 +3,638 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RouteIQ — Karachi Logistics Optimizer</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+<title>Karachi Delivery Optimizer</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Nunito+Sans:wght@300;400;600&display=swap" rel="stylesheet" />
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --bg: #0a0a0f;
-    --bg-card: #111118;
-    --bg-input: #16161f;
-    --bg-hover: #1c1c28;
-    --border: rgba(255,255,255,0.07);
-    --border-active: rgba(255,255,255,0.18);
-    --accent: #4f8cff;
-    --accent-glow: rgba(79,140,255,0.15);
-    --accent-2: #a78bfa;
-    --success: #34d399;
-    --warning: #fbbf24;
-    --danger: #f87171;
-    --text-primary: #f0f0f8;
-    --text-secondary: #8888aa;
-    --text-muted: #44445a;
-    --font-display: 'Syne', sans-serif;
-    --font-body: 'DM Sans', sans-serif;
-    --font-mono: 'DM Mono', monospace;
-    --radius: 12px;
-    --radius-sm: 8px;
-    --radius-lg: 18px;
-  }
-
-  html, body {
-    background: var(--bg);
-    color: var(--text-primary);
-    font-family: var(--font-body);
-    font-size: 15px;
-    line-height: 1.6;
-    min-height: 100vh;
-    -webkit-font-smoothing: antialiased;
-  }
-
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(79,140,255,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(79,140,255,0.03) 1px, transparent 1px);
-    background-size: 48px 48px;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  body::after {
-    content: '';
-    position: fixed;
-    top: -200px; left: -200px;
-    width: 700px; height: 700px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(79,140,255,0.06) 0%, transparent 70%);
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  .glow-orb-2 {
-    position: fixed;
-    bottom: -200px; right: -200px;
-    width: 600px; height: 600px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(167,139,250,0.05) 0%, transparent 70%);
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  .wrapper {
-    position: relative;
-    z-index: 1;
-    max-width: 880px;
-    margin: 0 auto;
-    padding: 0 24px 80px;
-  }
-
-  header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 28px 0 48px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 52px;
-  }
-
-  .logo { display: flex; align-items: center; gap: 12px; }
-
-  .logo-mark {
-    width: 36px; height: 36px;
-    background: var(--accent);
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    position: relative; overflow: hidden;
-  }
-
-  .logo-mark::after {
-    content: '';
-    position: absolute; inset: 0;
-    background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 60%);
-  }
-
-  .logo-mark svg { width: 20px; height: 20px; color: #fff; position: relative; z-index: 1; }
-
-  .logo-text { font-family: var(--font-display); font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
-  .logo-text span { color: var(--accent); }
-
-  .header-badge {
-    font-family: var(--font-mono);
-    font-size: 11px; color: var(--text-muted);
-    border: 1px solid var(--border);
-    border-radius: 100px; padding: 4px 12px; letter-spacing: 0.06em;
-  }
-
-  .hero { text-align: center; margin-bottom: 52px; }
-
-  .hero-eyebrow {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-family: var(--font-mono); font-size: 11px;
-    color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase;
-    border: 1px solid rgba(79,140,255,0.25); border-radius: 100px;
-    padding: 4px 14px; margin-bottom: 20px;
-    background: rgba(79,140,255,0.06);
-  }
-
-  .hero-eyebrow::before {
-    content: '';
-    width: 6px; height: 6px;
-    background: var(--accent); border-radius: 50%;
-    animation: pulse 2s ease-in-out infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(0.8); }
-  }
-
-  h1 {
-    font-family: var(--font-display);
-    font-size: clamp(32px, 5vw, 52px);
-    font-weight: 700; line-height: 1.1;
-    letter-spacing: -0.03em; margin-bottom: 16px;
-  }
-
-  h1 em { font-style: normal; color: var(--accent); }
-
-  .hero-sub {
-    font-size: 16px; color: var(--text-secondary);
-    max-width: 480px; margin: 0 auto;
-    font-weight: 300; line-height: 1.7;
-  }
-
-  .input-section { margin-bottom: 20px; }
-
-  .input-label {
-    font-size: 12px; font-weight: 500;
-    letter-spacing: 0.08em; text-transform: uppercase;
-    color: var(--text-muted); margin-bottom: 10px; display: block;
-  }
-
-  .textarea-wrap {
-    position: relative;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    background: var(--bg-card);
-    transition: border-color 0.2s, box-shadow 0.2s;
-    overflow: hidden;
-  }
-
-  .textarea-wrap:focus-within {
-    border-color: var(--border-active);
-    box-shadow: 0 0 0 3px var(--accent-glow);
-  }
-
-  textarea {
-    width: 100%; min-height: 130px;
-    background: transparent; border: none; outline: none; resize: none;
-    padding: 20px 20px 12px;
-    font-family: var(--font-body); font-size: 15px;
-    font-weight: 300; color: var(--text-primary); line-height: 1.7;
-    caret-color: var(--accent);
-  }
-
-  textarea::placeholder { color: var(--text-muted); }
-
-  .textarea-footer {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 14px 12px;
-    border-top: 1px solid var(--border);
-  }
-
-  .example-chips { display: flex; gap: 6px; flex-wrap: wrap; }
-
-  .chip {
-    font-family: var(--font-mono); font-size: 11px;
-    color: var(--text-secondary);
-    border: 1px solid var(--border); border-radius: 6px;
-    padding: 3px 9px; cursor: pointer;
-    transition: all 0.15s; background: transparent; white-space: nowrap;
-  }
-
-  .chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
-
-  .char-count { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
-
-  /* ── SETTINGS — now just Backend URL + Cost per km ── */
-  .settings-panel {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    margin-bottom: 24px;
-  }
-
-  .settings-toggle {
-    width: 100%; display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 20px; background: transparent; border: none;
-    cursor: pointer; color: var(--text-secondary);
-    font-family: var(--font-body); font-size: 13px; transition: color 0.2s;
-  }
-
-  .settings-toggle:hover { color: var(--text-primary); }
-
-  .settings-toggle-left { display: flex; align-items: center; gap: 8px; }
-  .settings-toggle svg { width: 15px; height: 15px; }
-  .settings-toggle .caret { transition: transform 0.25s; }
-  .settings-toggle.open .caret { transform: rotate(180deg); }
-
-  .settings-body { display: none; padding: 0 20px 20px; border-top: 1px solid var(--border); }
-  .settings-body.open { display: block; }
-
-  .settings-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-top: 16px;
-  }
-
-  .field { display: flex; flex-direction: column; gap: 6px; }
-
-  .field label {
-    font-size: 11px; font-weight: 500;
-    color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.07em;
-  }
-
-  .field-hint {
-    font-size: 11px; color: var(--text-muted);
-    font-family: var(--font-mono); margin-top: 2px;
-  }
-
-  .field input {
-    background: var(--bg-input); border: 1px solid var(--border);
-    border-radius: var(--radius-sm); padding: 9px 12px;
-    color: var(--text-primary); font-family: var(--font-body);
-    font-size: 13px; outline: none; transition: border-color 0.2s;
-  }
-
-  .field input:focus { border-color: var(--accent); }
-
-  .btn-submit {
-    width: 100%; padding: 16px;
-    background: var(--accent); color: #fff;
-    border: none; border-radius: var(--radius);
-    font-family: var(--font-display); font-size: 16px;
-    font-weight: 600; letter-spacing: -0.01em;
-    cursor: pointer; transition: all 0.2s;
-    position: relative; overflow: hidden;
-    display: flex; align-items: center; justify-content: center; gap: 10px;
-  }
-
-  .btn-submit::before {
-    content: '';
-    position: absolute; inset: 0;
-    background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 60%);
-  }
-
-  .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(79,140,255,0.35); }
-  .btn-submit:active { transform: translateY(0); }
-  .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
-  .btn-submit svg { width: 18px; height: 18px; position: relative; z-index: 1; }
-  .btn-submit span { position: relative; z-index: 1; }
-
-  .status-bar {
-    display: none; align-items: center; gap: 12px;
-    padding: 14px 18px;
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: var(--radius); margin-top: 20px;
-    font-size: 13px; color: var(--text-secondary);
-  }
-
-  .status-bar.visible { display: flex; }
-
-  .spinner {
-    width: 16px; height: 16px;
-    border: 2px solid var(--border); border-top-color: var(--accent);
-    border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0;
-  }
-
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  .status-steps { display: flex; gap: 6px; margin-left: auto; }
-
-  .step-dot {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: var(--border); transition: background 0.3s;
-  }
-
-  .step-dot.done { background: var(--success); }
-  .step-dot.active { background: var(--accent); animation: pulse 1s ease-in-out infinite; }
-
-  /* pipeline labels */
-  .pipeline {
-    display: flex; gap: 0; margin-top: 20px; margin-bottom: 28px;
-    border: 1px solid var(--border); border-radius: var(--radius);
-    overflow: hidden; font-family: var(--font-mono);
-  }
-
-  .pipe-step {
-    flex: 1; padding: 10px 8px; text-align: center;
-    font-size: 10px; color: var(--text-muted);
-    border-right: 1px solid var(--border);
-    transition: background 0.3s, color 0.3s;
-    line-height: 1.4;
-  }
-
-  .pipe-step:last-child { border-right: none; }
-  .pipe-step.active { background: var(--accent-glow); color: var(--accent); }
-  .pipe-step.done { color: var(--success); }
-  .pipe-step .pipe-icon { font-size: 14px; display: block; margin-bottom: 3px; }
-
-  #results { display: none; animation: fadeUp 0.4s ease; }
-  #results.visible { display: block; }
-
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(16px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .results-header {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 24px;
-  }
-
-  .results-title {
-    font-family: var(--font-display); font-size: 22px;
-    font-weight: 600; letter-spacing: -0.02em;
-  }
-
-  .valid-badge {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-size: 12px; font-weight: 500; padding: 5px 12px;
-    border-radius: 100px; font-family: var(--font-mono);
-  }
-
-  .valid-badge.ok { background: rgba(52,211,153,0.1); color: var(--success); border: 1px solid rgba(52,211,153,0.2); }
-  .valid-badge.warn { background: rgba(251,191,36,0.1); color: var(--warning); border: 1px solid rgba(251,191,36,0.2); }
-
-  .metrics-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 12px; margin-bottom: 28px;
-  }
-
-  .metric-card {
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 16px 18px;
-    transition: border-color 0.2s;
-  }
-
-  .metric-card:hover { border-color: var(--border-active); }
-
-  .metric-label {
-    font-size: 11px; color: var(--text-muted);
-    text-transform: uppercase; letter-spacing: 0.08em;
-    font-weight: 500; margin-bottom: 6px; font-family: var(--font-mono);
-  }
-
-  .metric-value {
-    font-family: var(--font-display); font-size: 24px;
-    font-weight: 700; letter-spacing: -0.03em;
-  }
-
-  .metric-value.accent { color: var(--accent); }
-  .metric-value.success { color: var(--success); }
-  .metric-value.purple { color: var(--accent-2); }
-
-  .summary-card {
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); padding: 28px 30px; margin-bottom: 28px;
-  }
-
-  .summary-card-header {
-    display: flex; align-items: center; gap: 10px;
-    margin-bottom: 18px; padding-bottom: 14px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .summary-card-header svg { width: 18px; height: 18px; color: var(--accent); }
-
-  .summary-card-title {
-    font-family: var(--font-display); font-size: 15px;
-    font-weight: 600; letter-spacing: -0.01em;
-  }
-
-  .summary-text {
-    font-size: 14px; color: var(--text-secondary);
-    line-height: 1.9; white-space: pre-wrap;
-  }
-
-  .routes-section-title {
-    font-family: var(--font-mono); font-size: 11px;
-    color: var(--text-muted); text-transform: uppercase;
-    letter-spacing: 0.08em; margin-bottom: 14px;
-  }
-
-  .route-card {
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); overflow: hidden;
-    margin-bottom: 14px; transition: border-color 0.2s;
-  }
-
-  .route-card:hover { border-color: var(--border-active); }
-
-  .route-card-header {
-    display: flex; align-items: center; gap: 14px;
-    padding: 16px 20px; cursor: pointer; user-select: none;
-  }
-
-  .vehicle-icon {
-    width: 38px; height: 38px;
-    background: var(--accent-glow);
-    border: 1px solid rgba(79,140,255,0.2);
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-  }
-
-  .vehicle-icon svg { width: 20px; height: 20px; color: var(--accent); }
-
-  .route-meta { flex: 1; min-width: 0; }
-
-  .route-name {
-    font-family: var(--font-display); font-size: 15px;
-    font-weight: 600; letter-spacing: -0.01em; margin-bottom: 2px;
-  }
-
-  .route-subtitle {
-    font-size: 12px; color: var(--text-muted);
-    font-family: var(--font-mono);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-
-  .route-stats { display: flex; gap: 18px; align-items: center; flex-shrink: 0; }
-
-  .route-stat { text-align: right; }
-  .route-stat-val { font-family: var(--font-mono); font-size: 14px; font-weight: 500; }
-  .route-stat-lbl { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
-
-  .chevron { width: 16px; height: 16px; color: var(--text-muted); transition: transform 0.25s; flex-shrink: 0; }
-  .route-card.open .chevron { transform: rotate(180deg); }
-
-  .route-body { display: none; padding: 0 20px 20px; border-top: 1px solid var(--border); }
-  .route-card.open .route-body { display: block; }
-
-  .stop-list { margin-top: 16px; position: relative; padding-left: 28px; }
-
-  .stop-list::before {
-    content: ''; position: absolute;
-    left: 8px; top: 8px; bottom: 8px;
-    width: 1px; background: var(--border);
-  }
-
-  .stop-item { position: relative; margin-bottom: 16px; }
-  .stop-item:last-child { margin-bottom: 0; }
-
-  .stop-dot {
-    position: absolute; left: -24px; top: 4px;
-    width: 10px; height: 10px; border-radius: 50%;
-    background: var(--bg); border: 2px solid var(--accent); z-index: 1;
-  }
-
-  .stop-item:last-child .stop-dot { border-color: var(--success); }
-
-  .stop-name { font-weight: 500; font-size: 14px; margin-bottom: 2px; }
-  .stop-detail { font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); }
-
-  .error-card {
-    background: rgba(248,113,113,0.06); border: 1px solid rgba(248,113,113,0.2);
-    border-radius: var(--radius); padding: 20px;
-    color: var(--danger); font-size: 13px; line-height: 1.7;
-    display: none; margin-top: 20px;
-  }
-
-  .error-card.visible { display: block; }
-  .error-title { font-weight: 600; margin-bottom: 4px; font-family: var(--font-display); font-size: 15px; }
-  .error-detail { color: rgba(248,113,113,0.7); font-family: var(--font-mono); font-size: 12px; margin-top: 8px; word-break: break-all; }
-
-  footer {
-    margin-top: 60px; padding-top: 24px;
-    border-top: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-    font-size: 12px; color: var(--text-muted); font-family: var(--font-mono);
-  }
-
-  .footer-tech { display: flex; gap: 16px; }
-  .tech-tag { display: inline-flex; align-items: center; gap: 4px; }
-  .tech-tag::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--text-muted); }
-
-  .btn-clear {
-    width: 100%; padding: 12px;
-    background: transparent;
-    color: var(--text-muted);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    font-family: var(--font-body); font-size: 14px;
-    font-weight: 400; cursor: pointer;
-    transition: all 0.2s;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    margin-top: 10px;
-  }
-
-  .btn-clear:hover {
-    border-color: var(--danger);
-    color: var(--danger);
-    background: rgba(248,113,113,0.05);
-  }
-
-  .btn-clear:active { transform: scale(0.99); }
-  .btn-clear:disabled { opacity: 0.4; cursor: not-allowed; }
-  .btn-clear svg { width: 15px; height: 15px; }
-
-  .toast {
-    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px);
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 12px 20px;
-    font-size: 13px; color: var(--text-secondary);
-    font-family: var(--font-mono);
-    display: flex; align-items: center; gap: 8px;
-    transition: transform 0.3s ease, opacity 0.3s ease;
-    opacity: 0; z-index: 100; white-space: nowrap;
-  }
-
-  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
-  .toast.success { border-color: rgba(52,211,153,0.3); color: var(--success); }
-  .toast.error { border-color: rgba(248,113,113,0.3); color: var(--danger); }
-  .toast-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
-
-  @media (max-width: 600px) {
-    .route-stats { display: none; }
-    .metrics-row { grid-template-columns: 1fr 1fr; }
-    .settings-grid { grid-template-columns: 1fr; }
-    h1 { font-size: 28px; }
-    .pipeline { display: none; }
-  }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --black:   #000000;
+  --brown:   #412D15;
+  --cream:   #E1DCC9;
+  --wine:    #810B38;
+  --cream-dim: rgba(225,220,201,0.55);
+  --cream-faint: rgba(225,220,201,0.22);
+  --border:  rgba(225,220,201,0.14);
+  --border-med: rgba(225,220,201,0.26);
+  --card-bg: rgba(225,220,201,0.05);
+  --font: 'Nunito', sans-serif;
+  --font-body: 'Nunito Sans', sans-serif;
+  --r: 14px;
+  --rlg: 20px;
+}
+
+html, body {
+  background: var(--black);
+  color: var(--cream);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ── BG BOX DOODLES ── */
+.bg-boxes { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.bg-box { position: absolute; opacity: 0.12; }
+.bg-box.b1 { top: 5vh;  left: 1.5vw; width: 76px;  transform: rotate(-11deg); }
+.bg-box.b2 { top: 16vh; right: 2vw;  width: 52px;  transform: rotate(9deg); }
+.bg-box.b3 { top: 50vh; left: 1vw;   width: 92px;  transform: rotate(6deg); }
+.bg-box.b4 { top: 68vh; right: 2vw;  width: 64px;  transform: rotate(-8deg); }
+.bg-box.b5 { top: 86vh; left: 4vw;   width: 58px;  transform: rotate(13deg); }
+.bg-box.b6 { top: 80vh; right: 7vw;  width: 80px;  transform: rotate(-10deg); }
+
+/* ── WRAPPER ── */
+.wrapper {
+  position: relative; z-index: 1;
+  max-width: 800px; margin: 0 auto;
+  padding: 0 28px 40px;
+}
+
+/* ── HEADER ── */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 0 18px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 26px;
+}
+
+.logo { display: flex; align-items: center; gap: 11px; }
+
+.logo-box {
+  width: 38px; height: 38px;
+  background: var(--cream);
+  border-radius: 10px;
+  border: 2px solid var(--brown);
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  box-shadow: 3px 3px 0 var(--brown);
+  flex-shrink: 0;
+}
+.logo-box::after {
+  content: '';
+  position: absolute; top: -5px; left: 50%; transform: translateX(-50%);
+  width: 14px; height: 6px;
+  background: var(--wine);
+  border-radius: 2px;
+  opacity: 0.85;
+}
+.logo-box svg { width: 19px; height: 19px; color: var(--black); }
+
+.logo-text {
+  font-family: var(--font);
+  font-size: 21px; font-weight: 800;
+  color: var(--cream); letter-spacing: -0.01em;
+}
+
+.eyebrow-pill {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-family: var(--font);
+  font-size: 11px; font-weight: 700;
+  color: var(--wine);
+  background: rgba(129,11,56,0.12);
+  border: 1.5px solid rgba(129,11,56,0.35);
+  border-radius: 100px;
+  padding: 4px 12px;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.dot-pulse {
+  width: 6px; height: 6px;
+  background: var(--wine); border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+  display: inline-block; flex-shrink: 0;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.6); }
+}
+
+/* ── HERO ── */
+.hero {
+  text-align: center;
+  margin-bottom: 22px;
+  position: relative;
+}
+
+.hero-deco {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 20px;
+}
+.hero-deco-left  { left: -110px; align-items: flex-end; }
+.hero-deco-right { right: -110px; align-items: flex-start; }
+
+h1 {
+  font-family: var(--font);
+  font-size: clamp(22px, 3.8vw, 36px);
+  font-weight: 800; line-height: 1.18;
+  letter-spacing: -0.025em; margin-bottom: 8px;
+  color: var(--cream);
+}
+h1 em { font-style: normal; color: var(--wine); }
+
+.hero-sub {
+  font-size: 13px; color: var(--cream-dim);
+  max-width: 380px; margin: 0 auto;
+  font-weight: 400; line-height: 1.65;
+}
+
+/* ── BOX ROW ── */
+.box-row {
+  display: flex; justify-content: center; align-items: flex-end;
+  gap: 48px; margin: 14px 0 22px;
+}
+.box-item {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+}
+.box-label {
+  font-family: var(--font); font-size: 10px; font-weight: 700;
+  color: var(--cream-faint); text-transform: uppercase; letter-spacing: 0.09em;
+}
+
+/* ── INPUT SECTION ── */
+.input-section { margin-bottom: 12px; }
+
+.input-label {
+  font-family: var(--font);
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--cream-dim); margin-bottom: 9px; display: block;
+}
+
+.textarea-wrap {
+  border-radius: var(--rlg);
+  background: var(--cream);
+  border: 2px solid var(--brown);
+  box-shadow: 4px 4px 0 var(--brown);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  overflow: visible;
+  position: relative;
+}
+.textarea-wrap::before,
+.textarea-wrap::after {
+  content: '';
+  position: absolute;
+  width: 34px; height: 12px;
+  background: var(--wine);
+  border-radius: 3px;
+  z-index: 2; opacity: 0.8;
+}
+.textarea-wrap::before { top: -6px; left: 22px; transform: rotate(-2deg); }
+.textarea-wrap::after  { top: -6px; right: 22px; transform: rotate(2deg); }
+
+.textarea-wrap:focus-within {
+  border-color: var(--wine);
+  box-shadow: 4px 4px 0 var(--wine);
+}
+
+textarea {
+  width: 100%; min-height: 88px;
+  background: transparent; border: none; outline: none; resize: none;
+  padding: 18px 20px 10px;
+  font-family: var(--font-body); font-size: 14px;
+  font-weight: 400; color: var(--black); line-height: 1.65;
+  caret-color: var(--wine);
+  border-radius: var(--rlg) var(--rlg) 0 0;
+}
+textarea::placeholder { color: rgba(65,45,21,0.45); }
+
+.textarea-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 14px 13px;
+  border-top: 1.5px dashed rgba(65,45,21,0.2);
+  background: rgba(225,220,201,0.88);
+  border-radius: 0 0 var(--rlg) var(--rlg);
+}
+
+.example-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip {
+  font-family: var(--font); font-size: 11px; font-weight: 700;
+  color: var(--brown);
+  border: 1.5px solid rgba(65,45,21,0.3);
+  border-radius: 100px;
+  padding: 3px 10px; cursor: pointer;
+  transition: all 0.15s; background: transparent;
+  white-space: nowrap;
+}
+.chip:hover { border-color: var(--wine); color: var(--wine); background: rgba(129,11,56,0.08); }
+
+.char-count {
+  font-family: var(--font); font-size: 11px; font-weight: 600;
+  color: rgba(65,45,21,0.4);
+}
+
+/* ── SETTINGS ── */
+.settings-panel {
+  background: var(--card-bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--rlg);
+  overflow: hidden; margin-bottom: 12px;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.4);
+}
+.settings-toggle {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  padding: 13px 18px; background: transparent; border: none;
+  cursor: pointer; color: var(--cream-dim);
+  font-family: var(--font); font-size: 13px; font-weight: 700;
+  transition: color 0.2s;
+}
+.settings-toggle:hover { color: var(--cream); }
+.settings-toggle-left { display: flex; align-items: center; gap: 8px; }
+.settings-toggle svg { width: 15px; height: 15px; }
+.settings-toggle .caret { transition: transform 0.25s; }
+.settings-toggle.open .caret { transform: rotate(180deg); }
+
+.settings-body { display: none; padding: 0 18px 18px; border-top: 1px dashed var(--border); }
+.settings-body.open { display: block; }
+.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label {
+  font-family: var(--font); font-size: 11px; font-weight: 700;
+  color: var(--cream-dim); text-transform: uppercase; letter-spacing: 0.08em;
+}
+.field-hint { font-size: 11px; color: var(--cream-faint); margin-top: 2px; }
+.field input {
+  background: rgba(225,220,201,0.07); border: 1.5px solid var(--border);
+  border-radius: 9px; padding: 8px 12px;
+  color: var(--cream); font-family: var(--font-body); font-size: 13px;
+  outline: none; transition: border-color 0.2s;
+}
+.field input:focus { border-color: var(--wine); }
+
+/* ── SUBMIT ── */
+.btn-submit {
+  width: 100%; padding: 13px;
+  background: var(--wine); color: var(--cream);
+  border: 2px solid rgba(0,0,0,0.3); border-radius: var(--r);
+  font-family: var(--font); font-size: 15px;
+  font-weight: 800; letter-spacing: 0.02em;
+  cursor: pointer; transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+}
+.btn-submit:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 rgba(0,0,0,0.5); }
+.btn-submit:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 rgba(0,0,0,0.5); }
+.btn-submit:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: 4px 4px 0 rgba(0,0,0,0.5); }
+.btn-submit svg { width: 17px; height: 17px; }
+
+/* ── CLEAR ── */
+.btn-clear {
+  width: 100%; padding: 11px;
+  background: transparent; color: var(--cream-dim);
+  border: 1.5px solid var(--border); border-radius: var(--r);
+  font-family: var(--font); font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  margin-top: 9px;
+}
+.btn-clear:hover { border-color: rgba(248,113,113,0.5); color: #f87171; background: rgba(248,113,113,0.06); }
+.btn-clear:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn-clear svg { width: 14px; height: 14px; }
+
+/* ── STATUS / SPINNER ── */
+.status-bar {
+  display: none; align-items: center; gap: 12px;
+  padding: 13px 16px;
+  background: var(--card-bg); border: 1.5px solid var(--border);
+  border-radius: var(--r); margin-top: 18px;
+  font-family: var(--font); font-size: 13px; font-weight: 600;
+  color: var(--cream-dim);
+}
+.status-bar.visible { display: flex; }
+.spinner {
+  width: 17px; height: 17px;
+  border: 2.5px solid var(--border); border-top-color: var(--wine);
+  border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── PIPELINE ── */
+.pipeline {
+  display: flex; margin-top: 18px; margin-bottom: 24px;
+  border: 1.5px solid var(--border); border-radius: var(--r);
+  overflow: hidden; font-family: var(--font);
+  background: var(--card-bg);
+}
+.pipe-step {
+  flex: 1; padding: 9px 6px; text-align: center;
+  font-size: 10px; font-weight: 700; color: var(--cream-faint);
+  border-right: 1px dashed var(--border);
+  transition: background 0.3s, color 0.3s; line-height: 1.4;
+  letter-spacing: 0.03em;
+}
+.pipe-step:last-child { border-right: none; }
+.pipe-step.active { background: rgba(129,11,56,0.15); color: var(--wine); }
+.pipe-step.done   { background: rgba(225,220,201,0.06); color: var(--cream-dim); }
+.pipe-step .pipe-icon { font-size: 13px; display: block; margin-bottom: 3px; }
+
+/* ── RESULTS ── */
+#results { display: none; animation: fadeUp 0.4s ease; }
+#results.visible { display: block; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+
+.section-divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 28px 0 20px; color: var(--cream-faint);
+  font-family: var(--font); font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em;
+}
+.section-divider::before, .section-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+
+.results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.results-title { font-family: var(--font); font-size: 20px; font-weight: 800; color: var(--cream); }
+
+.valid-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--font); font-size: 11px; font-weight: 700;
+  padding: 4px 12px; border-radius: 100px; border: 1.5px solid;
+}
+.valid-badge.ok   { background: rgba(129,11,56,0.12); color: #d4849e; border-color: rgba(129,11,56,0.4); }
+.valid-badge.warn { background: rgba(225,220,201,0.1); color: var(--cream); border-color: var(--border-med); }
+
+.metrics-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 10px; margin-bottom: 20px; }
+
+.metric-card {
+  background: var(--card-bg); border: 1.5px solid var(--border);
+  border-radius: var(--r); padding: 14px 16px;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.4);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.metric-card:hover { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 rgba(0,0,0,0.5); }
+.metric-label { font-family: var(--font); font-size: 10px; font-weight: 700; color: var(--cream-faint); text-transform: uppercase; letter-spacing: 0.09em; margin-bottom: 5px; }
+.metric-value { font-family: var(--font); font-size: 22px; font-weight: 800; color: var(--cream); }
+.metric-value.accent  { color: var(--wine); }
+.metric-value.success { color: #c9a87c; }
+.metric-value.purple  { color: #d4849e; }
+
+.summary-card {
+  background: var(--card-bg); border: 1.5px solid var(--border);
+  border-radius: var(--rlg); padding: 20px 22px; margin-bottom: 20px;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.4);
+}
+.summary-card-header {
+  display: flex; align-items: center; gap: 9px;
+  margin-bottom: 12px; padding-bottom: 10px;
+  border-bottom: 1px dashed var(--border);
+}
+.summary-card-header svg { width: 16px; height: 16px; color: var(--wine); }
+.summary-card-title { font-family: var(--font); font-size: 14px; font-weight: 800; color: var(--cream); }
+.summary-text { font-size: 13px; color: var(--cream-dim); line-height: 1.85; white-space: pre-wrap; }
+
+.routes-section-title {
+  font-family: var(--font); font-size: 11px; font-weight: 800;
+  color: var(--cream-faint); text-transform: uppercase;
+  letter-spacing: 0.1em; margin-bottom: 10px;
+}
+
+.route-card {
+  background: var(--card-bg); border: 1.5px solid var(--border);
+  border-radius: var(--rlg); overflow: hidden;
+  margin-bottom: 10px; box-shadow: 3px 3px 0 rgba(0,0,0,0.4);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.route-card:hover { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 rgba(0,0,0,0.5); }
+.route-card-header { display: flex; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer; user-select: none; }
+
+.vehicle-icon {
+  width: 38px; height: 38px;
+  background: rgba(129,11,56,0.12);
+  border: 1.5px solid rgba(129,11,56,0.3);
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.vehicle-icon svg { width: 18px; height: 18px; color: var(--wine); }
+
+.route-meta { flex: 1; min-width: 0; }
+.route-name { font-family: var(--font); font-size: 14px; font-weight: 800; color: var(--cream); margin-bottom: 2px; }
+.route-subtitle { font-family: var(--font); font-size: 11px; font-weight: 600; color: var(--cream-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.route-stats { display: flex; gap: 14px; align-items: center; flex-shrink: 0; }
+.route-stat { text-align: right; }
+.route-stat-val { font-family: var(--font); font-size: 13px; font-weight: 800; color: var(--cream); }
+.route-stat-lbl { font-size: 9px; font-weight: 700; color: var(--cream-faint); text-transform: uppercase; letter-spacing: 0.06em; }
+
+.chevron { width: 16px; height: 16px; color: var(--cream-faint); transition: transform 0.25s; flex-shrink: 0; }
+.route-card.open .chevron { transform: rotate(180deg); }
+.route-body { display: none; padding: 0 16px 16px; border-top: 1px dashed var(--border); }
+.route-card.open .route-body { display: block; }
+
+.stop-list { margin-top: 14px; position: relative; padding-left: 26px; }
+.stop-list::before { content: ''; position: absolute; left: 7px; top: 7px; bottom: 7px; width: 1.5px; background: var(--border); border-radius: 2px; }
+.stop-item { position: relative; margin-bottom: 14px; }
+.stop-item:last-child { margin-bottom: 0; }
+.stop-dot { position: absolute; left: -22px; top: 4px; width: 10px; height: 10px; border-radius: 2px; background: var(--black); border: 2px solid var(--cream); z-index: 1; }
+.stop-item:last-child .stop-dot { border-color: var(--wine); background: rgba(129,11,56,0.2); }
+.stop-name { font-family: var(--font); font-weight: 700; font-size: 13px; color: var(--cream); margin-bottom: 1px; }
+.stop-detail { font-size: 11px; color: var(--cream-faint); }
+
+/* ── ERROR ── */
+.error-card {
+  background: rgba(248,113,113,0.07); border: 1.5px solid rgba(248,113,113,0.3);
+  border-radius: var(--r); padding: 18px;
+  color: #f87171; font-family: var(--font); font-size: 13px; font-weight: 600;
+  line-height: 1.7; display: none; margin-top: 16px;
+}
+.error-card.visible { display: block; }
+.error-title { font-weight: 800; margin-bottom: 3px; font-size: 14px; }
+.error-detail { color: rgba(248,113,113,0.5); font-size: 11px; margin-top: 6px; word-break: break-all; }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(70px);
+  background: #1a0d07; border: 1.5px solid var(--border);
+  border-radius: var(--r); padding: 11px 18px;
+  font-family: var(--font); font-size: 13px; font-weight: 700;
+  color: var(--cream-dim);
+  display: flex; align-items: center; gap: 8px;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  opacity: 0; z-index: 100; white-space: nowrap;
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+}
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+.toast.success { border-color: rgba(129,11,56,0.45); color: #d4849e; }
+.toast.error   { border-color: rgba(248,113,113,0.4); color: #f87171; }
+.toast-dot { width: 7px; height: 7px; border-radius: 2px; background: currentColor; flex-shrink: 0; }
+
+/* ── FOOTER ── */
+footer {
+  margin-top: 48px; padding-top: 20px;
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  font-family: var(--font); font-size: 11px; font-weight: 700;
+  color: var(--cream-faint); flex-wrap: wrap; gap: 10px;
+}
+.footer-tech { display: flex; gap: 8px; flex-wrap: wrap; }
+.tech-tag {
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 100px; padding: 2px 9px; font-size: 10px;
+}
+
+@media (max-width: 680px) {
+  .hero-deco { display: none; }
+  .route-stats { display: none; }
+  .metrics-row { grid-template-columns: 1fr 1fr; }
+  .settings-grid { grid-template-columns: 1fr; }
+  h1 { font-size: 24px; }
+  .pipeline { display: none; }
+  .box-row { gap: 28px; }
+  .eyebrow-pill { font-size: 10px; padding: 3px 10px; }
+}
 </style>
 </head>
 <body>
-<div class="glow-orb-2"></div>
+
+<div class="bg-boxes">
+  <svg class="bg-box b1" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="4" y="26" width="72" height="50" rx="5" fill="#E1DCC9" stroke="#E1DCC9" stroke-width="1.5"/>
+    <path d="M4 46h72M26 46v30M54 46v30" stroke="#412D15" stroke-width="2"/>
+    <path d="M26 26L40 10L54 26" fill="#412D15" stroke="#E1DCC9" stroke-width="1.5"/>
+    <rect x="30" y="12" width="20" height="10" rx="3" fill="#810B38"/>
+  </svg>
+  <svg class="bg-box b2" viewBox="0 0 56 62" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="3" y="20" width="50" height="38" rx="4" fill="#810B38" stroke="#810B38" stroke-width="1.5"/>
+    <path d="M3 35h50M18 35v23M38 35v23" stroke="#000" stroke-width="1.5"/>
+    <path d="M18 20L28 8L38 20" fill="#000" stroke="#810B38" stroke-width="1.5"/>
+    <rect x="21" y="10" width="14" height="8" rx="3" fill="#E1DCC9"/>
+  </svg>
+  <svg class="bg-box b3" viewBox="0 0 100 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="4" y="28" width="92" height="58" rx="6" fill="#412D15" stroke="#412D15" stroke-width="2"/>
+    <path d="M4 50h92M32 50v36M68 50v36" stroke="#E1DCC9" stroke-width="2" stroke-opacity="0.3"/>
+    <path d="M32 28L50 10L68 28" fill="#000" stroke="#412D15" stroke-width="2"/>
+    <rect x="37" y="12" width="26" height="13" rx="4" fill="#810B38"/>
+  </svg>
+  <svg class="bg-box b4" viewBox="0 0 72 74" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="3" y="22" width="66" height="48" rx="5" fill="#E1DCC9" stroke="#E1DCC9" stroke-width="1.5"/>
+    <path d="M3 40h66M24 40v30M48 40v30" stroke="#412D15" stroke-width="1.8"/>
+    <path d="M24 22L36 8L48 22" fill="#412D15" stroke="#E1DCC9" stroke-width="1.5"/>
+    <rect x="28" y="10" width="16" height="9" rx="3" fill="#810B38"/>
+  </svg>
+  <svg class="bg-box b5" viewBox="0 0 64 68" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="3" y="20" width="58" height="44" rx="5" fill="#810B38" stroke="#810B38" stroke-width="1.5"/>
+    <path d="M3 37h58M22 37v27M42 37v27" stroke="#000" stroke-width="1.5"/>
+    <path d="M22 20L32 7L42 20" fill="#000" stroke="#810B38" stroke-width="1.5"/>
+    <rect x="25" y="9" width="14" height="8" rx="3" fill="#E1DCC9"/>
+  </svg>
+  <svg class="bg-box b6" viewBox="0 0 90 82" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="4" y="26" width="82" height="52" rx="6" fill="#412D15" stroke="#412D15" stroke-width="2"/>
+    <path d="M4 46h82M30 46v32M60 46v32" stroke="#E1DCC9" stroke-width="1.8" stroke-opacity="0.3"/>
+    <path d="M30 26L45 10L60 26" fill="#000" stroke="#412D15" stroke-width="2"/>
+    <rect x="35" y="12" width="20" height="11" rx="3" fill="#E1DCC9"/>
+  </svg>
+</div>
+
 <div class="wrapper">
 
   <header>
     <div class="logo">
-      <div class="logo-mark">
+      <div class="logo-box">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/>
+          <path d="M5 8h14M5 8a2 2 0 1 0-4 0v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 1 0-4 0M5 8V6a2 2 0 0 1 4 0v2M15 8V6a2 2 0 0 0-4 0v2"/>
         </svg>
       </div>
-      <span class="logo-text">Route<span>IQ</span></span>
+      <span class="logo-text">Karachi</span>
     </div>
-    <span class="header-badge">KARACHI · BETA</span>
+    <div class="eyebrow-pill"><span class="dot-pulse"></span> AI-Powered Route Optimization</div>
   </header>
 
   <div class="hero">
-    <div class="hero-eyebrow">AI-Powered Route Optimization</div>
-    <h1>Smarter deliveries,<br /><em>every route.</em></h1>
-    <p class="hero-sub">Describe your delivery in plain English. Our system extracts constraints, maps real Karachi distances, and finds the optimal route automatically.</p>
+    <div class="hero-deco hero-deco-left">
+      <svg width="38" height="44" viewBox="0 0 54 60" fill="none">
+        <rect x="3" y="18" width="48" height="38" rx="5" fill="#412D15" stroke="rgba(225,220,201,0.2)" stroke-width="1.5"/>
+        <path d="M3 34h48M18 34v22M36 34v22" stroke="rgba(225,220,201,0.15)" stroke-width="1.5"/>
+        <path d="M18 18L27 6L36 18" fill="#810B38" stroke="rgba(225,220,201,0.1)" stroke-width="1.5"/>
+        <rect x="21" y="8" width="12" height="8" rx="3" fill="#E1DCC9"/>
+      </svg>
+      <svg width="28" height="34" viewBox="0 0 40 46" fill="none">
+        <rect x="3" y="14" width="34" height="28" rx="4" fill="#810B38" stroke="rgba(225,220,201,0.15)" stroke-width="1.5"/>
+        <path d="M3 25h34M13 25v17M27 25v17" stroke="rgba(225,220,201,0.15)" stroke-width="1.2"/>
+        <path d="M13 14L20 5L27 14" fill="#000" stroke="rgba(225,220,201,0.1)" stroke-width="1.5"/>
+        <rect x="16" y="6" width="8" height="6" rx="2" fill="#E1DCC9"/>
+      </svg>
+    </div>
+    <div class="hero-deco hero-deco-right">
+      <svg width="34" height="40" viewBox="0 0 48 54" fill="none">
+        <rect x="3" y="16" width="42" height="34" rx="5" fill="#E1DCC9" stroke="rgba(225,220,201,0.2)" stroke-width="1.5"/>
+        <path d="M3 30h42M16 30v20M32 30v20" stroke="rgba(65,45,21,0.3)" stroke-width="1.5"/>
+        <path d="M16 16L24 5L32 16" fill="#412D15" stroke="rgba(65,45,21,0.15)" stroke-width="1.5"/>
+        <rect x="18" y="7" width="12" height="7" rx="2" fill="#810B38"/>
+      </svg>
+      <svg width="26" height="32" viewBox="0 0 36 42" fill="none">
+        <rect x="3" y="12" width="30" height="26" rx="4" fill="#412D15" stroke="rgba(225,220,201,0.15)" stroke-width="1.5"/>
+        <path d="M3 23h30M12 23v15M24 23v15" stroke="rgba(225,220,201,0.15)" stroke-width="1.2"/>
+        <path d="M12 12L18 4L24 12" fill="#810B38" stroke="rgba(225,220,201,0.1)" stroke-width="1.5"/>
+        <rect x="15" y="5" width="6" height="5" rx="2" fill="#E1DCC9"/>
+      </svg>
+    </div>
+
+    <h1>Smart deliveries,<br /><em>your way ✦</em></h1>
+    <p class="hero-sub">Describe your delivery in a few words — we'll make sure it reaches the right place, through the perfect route.</p>
+  </div>
+
+  <div class="box-row">
+    <div class="box-item">
+      <svg width="36" height="40" viewBox="0 0 52 56" fill="none">
+        <rect x="3" y="17" width="46" height="35" rx="5" fill="#412D15" stroke="rgba(225,220,201,0.18)" stroke-width="1.5"/>
+        <path d="M3 32h46M17 32v20M35 32v20" stroke="rgba(225,220,201,0.15)" stroke-width="1.5"/>
+        <path d="M17 17L26 5L35 17" fill="#810B38" stroke="rgba(225,220,201,0.1)" stroke-width="1.5"/>
+        <rect x="20" y="7" width="12" height="8" rx="3" fill="#E1DCC9"/>
+        <text x="26" y="46" text-anchor="middle" font-size="9" fill="rgba(225,220,201,0.45)" font-family="Nunito" font-weight="800">FRAGILE</text>
+      </svg>
+      <span class="box-label">Fragile</span>
+    </div>
+    <div class="box-item">
+      <svg width="42" height="42" viewBox="0 0 60 58" fill="none">
+        <rect x="3" y="18" width="54" height="36" rx="5" fill="#810B38" stroke="rgba(225,220,201,0.15)" stroke-width="1.5"/>
+        <path d="M3 34h54M20 34v20M40 34v20" stroke="rgba(0,0,0,0.3)" stroke-width="1.5"/>
+        <path d="M20 18L30 6L40 18" fill="#000" stroke="rgba(225,220,201,0.1)" stroke-width="1.5"/>
+        <rect x="23" y="8" width="14" height="8" rx="3" fill="#E1DCC9"/>
+        <text x="30" y="48" text-anchor="middle" font-size="9" fill="rgba(225,220,201,0.5)" font-family="Nunito" font-weight="800">BULK</text>
+      </svg>
+      <span class="box-label">Bulk</span>
+    </div>
+    <div class="box-item">
+      <svg width="34" height="40" viewBox="0 0 48 56" fill="none">
+        <rect x="3" y="17" width="42" height="35" rx="5" fill="#E1DCC9" stroke="rgba(225,220,201,0.2)" stroke-width="1.5"/>
+        <path d="M3 32h42M15 32v20M33 32v20" stroke="rgba(65,45,21,0.25)" stroke-width="1.5"/>
+        <path d="M15 17L24 5L33 17" fill="#412D15" stroke="rgba(65,45,21,0.12)" stroke-width="1.5"/>
+        <rect x="18" y="7" width="12" height="8" rx="3" fill="#810B38"/>
+        <text x="24" y="46" text-anchor="middle" font-size="11" fill="rgba(65,45,21,0.5)" font-family="Nunito" font-weight="800">!</text>
+      </svg>
+      <span class="box-label">Urgent</span>
+    </div>
   </div>
 
   <div class="input-section">
-    <span class="input-label">Delivery Request</span>
+    <span class="input-label">Delivery request</span>
     <div class="textarea-wrap">
-      <textarea id="user-input" placeholder="e.g. Deliver 5 packages to DHA Phase 5, 3 to Clifton Block 4, and 2 to Saddar by 2pm. Goods are fragile." maxlength="800"></textarea>
+      <textarea id="user-input" placeholder="e.g. 5 packages to DHA Phase 5, 3 to Clifton Block 4, and 2 to Saddar by 2pm — fragile goods." maxlength="800"></textarea>
       <div class="textarea-footer">
         <div class="example-chips">
-          <button class="chip" onclick="fillExample(0)">DHA + Clifton delivery</button>
-          <button class="chip" onclick="fillExample(1)">Urgent medical supplies</button>
-          <button class="chip" onclick="fillExample(2)">Multi-zone bulk order</button>
+          <button class="chip" onclick="fillExample(0)">DHA + Clifton</button>
+          <button class="chip" onclick="fillExample(1)">Medical urgent</button>
+          <button class="chip" onclick="fillExample(2)">Multi-zone bulk</button>
         </div>
         <span class="char-count" id="char-count">0 / 800</span>
       </div>
     </div>
   </div>
 
-  <!-- SETTINGS: only Backend URL + Cost per km -->
   <div class="settings-panel">
     <button class="settings-toggle" onclick="toggleSettings(this)">
       <span class="settings-toggle-left">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="3"/>
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
         Advanced settings
       </span>
-      <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M6 9l6 6 6-6"/>
-      </svg>
+      <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
     </button>
     <div class="settings-body" id="settings-body">
       <div class="settings-grid">
@@ -623,48 +646,35 @@
         <div class="field">
           <label>Cost per km (PKR)</label>
           <input type="number" id="cost-per-km" value="10" min="1" />
-          <span class="field-hint">Fuel/distance cost multiplier for route scoring</span>
+          <span class="field-hint">Fuel/distance cost multiplier</span>
         </div>
       </div>
     </div>
   </div>
 
   <button class="btn-submit" id="submit-btn" onclick="handleSubmit()">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3L12 3z"/>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M5 8h14M5 8a2 2 0 1 0-4 0v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 1 0-4 0M5 8V6a2 2 0 0 1 4 0v2M15 8V6a2 2 0 0 0-4 0v2"/>
     </svg>
-    <span id="submit-label">Optimize Routes</span>
+    <span id="submit-label">Optimize Routes ✦</span>
   </button>
 
   <button class="btn-clear" id="clear-btn" onclick="handleClear()">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+      <path d="M10 11v6M14 11v6"/>
     </svg>
     Clear queue &amp; start fresh
   </button>
 
-  <div class="toast" id="toast">
-    <span class="toast-dot"></span>
-    <span id="toast-msg"></span>
-  </div>
+  <div class="toast" id="toast"><span class="toast-dot"></span><span id="toast-msg"></span></div>
 
-  <!-- PIPELINE PROGRESS -->
-  <div class="pipeline" id="pipeline" style="display:none; margin-top:20px;">
-    <div class="pipe-step" id="pipe-1">
-      <span class="pipe-icon">🧠</span>LLM Parsing
-    </div>
-    <div class="pipe-step" id="pipe-2">
-      <span class="pipe-icon">🗺️</span>Map Distances
-    </div>
-    <div class="pipe-step" id="pipe-3">
-      <span class="pipe-icon">🧬</span>Genetic Algorithm
-    </div>
-    <div class="pipe-step" id="pipe-4">
-      <span class="pipe-icon">✅</span>CSP Validation
-    </div>
-    <div class="pipe-step" id="pipe-5">
-      <span class="pipe-icon">📝</span>AI Summary
-    </div>
+  <div class="pipeline" id="pipeline" style="display:none;margin-top:18px;">
+    <div class="pipe-step" id="pipe-1"><span class="pipe-icon">🧠</span>Parsing</div>
+    <div class="pipe-step" id="pipe-2"><span class="pipe-icon">🗺️</span>Mapping</div>
+    <div class="pipe-step" id="pipe-3"><span class="pipe-icon">🧬</span>Optimizing</div>
+    <div class="pipe-step" id="pipe-4"><span class="pipe-icon">✅</span>Validating</div>
+    <div class="pipe-step" id="pipe-5"><span class="pipe-icon">📝</span>Summary</div>
   </div>
 
   <div class="status-bar" id="status-bar">
@@ -673,12 +683,13 @@
   </div>
 
   <div class="error-card" id="error-card">
-    <div class="error-title">Something went wrong</div>
+    <div class="error-title">Oops! Something went wrong</div>
     <div id="error-msg"></div>
     <div class="error-detail" id="error-detail"></div>
   </div>
 
   <div id="results">
+    <div class="section-divider">Results</div>
     <div class="results-header">
       <span class="results-title">Optimization Results</span>
       <span class="valid-badge" id="valid-badge"></span>
@@ -686,19 +697,17 @@
     <div class="metrics-row" id="metrics-row"></div>
     <div class="summary-card" id="summary-card" style="display:none">
       <div class="summary-card-header">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-        </svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         <span class="summary-card-title">AI Summary</span>
       </div>
       <div class="summary-text" id="summary-text"></div>
     </div>
-    <div class="routes-section-title">Vehicle Routes</div>
+    <div class="routes-section-title">Vehicle routes</div>
     <div id="routes-container"></div>
   </div>
 
   <footer>
-    <span>RouteIQ — Karachi Logistics</span>
+    <span>Karachi Delivery ✦</span>
     <div class="footer-tech">
       <span class="tech-tag">A* Pathfinding</span>
       <span class="tech-tag">Genetic Algorithm</span>
@@ -706,288 +715,98 @@
       <span class="tech-tag">LLM Parsing</span>
     </div>
   </footer>
-
 </div>
+
 <script>
-const EXAMPLES = [
+const EXAMPLES=[
   "Deliver 5 packages to DHA Phase 5, 3 to Clifton Block 4, and 2 to Saddar by 2pm. Goods are fragile. Budget is PKR 2000.",
   "Urgent delivery of medical supplies to Aga Khan Hospital and Civil Hospital Karachi. 4 packages each. Needs refrigerated transport. Deliver by 11am.",
   "20 packages to be delivered across Gulshan-e-Iqbal, North Nazimabad, Gulistan-e-Johar, and Korangi Industrial Area. Use highway where possible."
 ];
-
-const textarea = document.getElementById('user-input');
-const charCount = document.getElementById('char-count');
-const submitBtn = document.getElementById('submit-btn');
-const submitLabel = document.getElementById('submit-label');
-const statusBar = document.getElementById('status-bar');
-const statusText = document.getElementById('status-text');
-const pipelineEl = document.getElementById('pipeline');
-const resultsEl = document.getElementById('results');
-const errorCard = document.getElementById('error-card');
-const metricsRow = document.getElementById('metrics-row');
-const routesContainer = document.getElementById('routes-container');
-
-textarea.addEventListener('input', () => {
-  charCount.textContent = `${textarea.value.length} / 800`;
-});
-
-function fillExample(i) {
-  textarea.value = EXAMPLES[i];
-  charCount.textContent = `${textarea.value.length} / 800`;
-  textarea.focus();
+const textarea=document.getElementById('user-input'),charCount=document.getElementById('char-count'),submitBtn=document.getElementById('submit-btn'),submitLabel=document.getElementById('submit-label'),statusBar=document.getElementById('status-bar'),statusText=document.getElementById('status-text'),pipelineEl=document.getElementById('pipeline'),resultsEl=document.getElementById('results'),errorCard=document.getElementById('error-card'),metricsRow=document.getElementById('metrics-row'),routesContainer=document.getElementById('routes-container');
+textarea.addEventListener('input',()=>{charCount.textContent=`${textarea.value.length} / 800`;});
+function fillExample(i){textarea.value=EXAMPLES[i];charCount.textContent=`${textarea.value.length} / 800`;textarea.focus();}
+function toggleSettings(btn){document.getElementById('settings-body').classList.toggle('open');btn.classList.toggle('open');}
+function setPipe(n,state){for(let i=1;i<=5;i++){const el=document.getElementById(`pipe-${i}`);if(i<n)el.className='pipe-step done';else if(i===n)el.className=`pipe-step ${state}`;else el.className='pipe-step';}}
+function showStatus(msg,p){statusBar.classList.add('visible');statusText.textContent=msg;pipelineEl.style.display='flex';if(p)setPipe(p,'active');}
+function hideStatus(){statusBar.classList.remove('visible');}
+function showError(msg,detail){errorCard.classList.add('visible');document.getElementById('error-msg').textContent=msg;document.getElementById('error-detail').textContent=detail||'';}
+function hideError(){errorCard.classList.remove('visible');}
+function showToast(msg,type=''){const t=document.getElementById('toast'),m=document.getElementById('toast-msg');t.className=`toast ${type}`;m.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+async function handleSubmit(){
+  const text=textarea.value.trim();if(!text){textarea.focus();return;}
+  const baseUrl=document.getElementById('backend-url').value.replace(/\/$/,'');
+  submitBtn.disabled=true;submitLabel.textContent='Optimizing...';
+  hideError();resultsEl.classList.remove('visible');resultsEl.style.display='none';pipelineEl.style.display='none';
+  try{
+    showStatus('Parsing your delivery request with AI...',1);
+    const r1=await fetch(`${baseUrl}/llm-inputs`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+    if(!r1.ok){const e=await r1.json().catch(()=>({}));throw new Error(e.detail||`LLM parsing failed (${r1.status})`);}
+    setPipe(1,'done');
+    showStatus('Fetching real-world Karachi road distances...',2);
+    await new Promise(r=>setTimeout(r,500));setPipe(2,'done');
+    showStatus('Running genetic algorithm...',3);
+    const r2=await fetch(`${baseUrl}/llm-process`,{method:'GET',headers:{'Content-Type':'application/json'}});
+    if(!r2.ok){const e=await r2.json().catch(()=>({}));throw new Error(e.detail||`Optimization failed (${r2.status})`);}
+    const data=await r2.json();setPipe(3,'done');
+    showStatus('Validating plan against all constraints...',4);await new Promise(r=>setTimeout(r,300));setPipe(4,'done');
+    showStatus('Generating your summary...',5);await new Promise(r=>setTimeout(r,250));setPipe(5,'done');
+    hideStatus();renderResults(data);
+  }catch(err){
+    hideStatus();pipelineEl.style.display='none';
+    const isNet=err.message.toLowerCase().includes('fetch')||err.message.toLowerCase().includes('failed to fetch');
+    showError(isNet?'Cannot connect to backend. Make sure your FastAPI server is running!':err.message,isNet?`Tried: ${baseUrl}`:'');
+  }finally{submitBtn.disabled=false;submitLabel.textContent='Optimize Routes ✦';}
 }
-
-function toggleSettings(btn) {
-  document.getElementById('settings-body').classList.toggle('open');
-  btn.classList.toggle('open');
+async function handleClear(){
+  const baseUrl=document.getElementById('backend-url').value.replace(/\/$/,'');
+  const cb=document.getElementById('clear-btn');cb.disabled=true;
+  try{
+    const r=await fetch(`${baseUrl}/llm-inputs`,{method:'DELETE'});
+    if(!r.ok)throw new Error(`Server returned ${r.status}`);
+    const d=await r.json();const count=d.deleted||0;
+    textarea.value='';charCount.textContent='0 / 800';
+    resultsEl.style.display='none';resultsEl.classList.remove('visible');
+    pipelineEl.style.display='none';hideError();
+    metricsRow.innerHTML='';routesContainer.innerHTML='';
+    document.getElementById('summary-card').style.display='none';
+    showToast(`Queue cleared — ${count} record${count!==1?'s':''} deleted`,'success');
+  }catch(err){showToast('Failed to clear: '+err.message,'error');}
+  finally{cb.disabled=false;}
 }
-
-function setPipe(n, state) {
-  for (let i = 1; i <= 5; i++) {
-    const el = document.getElementById(`pipe-${i}`);
-    if (i < n) el.className = 'pipe-step done';
-    else if (i === n) el.className = `pipe-step ${state}`;
-    else el.className = 'pipe-step';
-  }
-}
-
-function showStatus(msg, pipeStep) {
-  statusBar.classList.add('visible');
-  statusText.textContent = msg;
-  pipelineEl.style.display = 'flex';
-  if (pipeStep) setPipe(pipeStep, 'active');
-}
-
-function hideStatus() {
-  statusBar.classList.remove('visible');
-}
-
-function showError(msg, detail) {
-  errorCard.classList.add('visible');
-  document.getElementById('error-msg').textContent = msg;
-  document.getElementById('error-detail').textContent = detail || '';
-}
-
-function hideError() { errorCard.classList.remove('visible'); }
-
-async function handleSubmit() {
-  const text = textarea.value.trim();
-  if (!text) { textarea.focus(); return; }
-
-  const baseUrl = document.getElementById('backend-url').value.replace(/\/$/, '');
-  const costPerKm = parseFloat(document.getElementById('cost-per-km').value) || 10;
-
-  submitBtn.disabled = true;
-  submitLabel.textContent = 'Optimizing...';
-  hideError();
-  resultsEl.classList.remove('visible');
-  resultsEl.style.display = 'none';
-  pipelineEl.style.display = 'none';
-
-  try {
-    // Step 1: LLM parsing
-    showStatus('Parsing your delivery request with AI...', 1);
-    const llmRes = await fetch(`${baseUrl}/llm-inputs`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text })
-    });
-
-    if (!llmRes.ok) {
-      const err = await llmRes.json().catch(() => ({}));
-      throw new Error(err.detail || `LLM parsing failed (${llmRes.status})`);
-    }
-    setPipe(1, 'done');
-
-    // Step 2: Map distances (happens inside llm-process, show it progressing)
-    showStatus('Fetching real-world Karachi road distances...', 2);
-    await new Promise(r => setTimeout(r, 500));
-    setPipe(2, 'done');
-
-    // Step 3: GA running
-    showStatus('Running genetic algorithm across route combinations...', 3);
-
-    const processRes = await fetch(`${baseUrl}/llm-process`, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
-    });
-
-    if (!processRes.ok) {
-      const err = await processRes.json().catch(() => ({}));
-      throw new Error(err.detail || `Optimization failed (${processRes.status})`);
-    }
-
-    const data = await processRes.json();
-    setPipe(3, 'done');
-
-    // Step 4: CSP (already done server-side, animate it)
-    showStatus('Validating plan against all constraints...', 4);
-    await new Promise(r => setTimeout(r, 300));
-    setPipe(4, 'done');
-
-    // Step 5: Summary
-    showStatus('Generating your summary...', 5);
-    await new Promise(r => setTimeout(r, 250));
-    setPipe(5, 'done');
-
-    hideStatus();
-    renderResults(data);
-
-  } catch (err) {
-    hideStatus();
-    pipelineEl.style.display = 'none';
-    const isNetwork = err.message.toLowerCase().includes('fetch') || err.message.toLowerCase().includes('failed to fetch');
-    showError(
-      isNetwork ? 'Cannot connect to the backend. Make sure your FastAPI server is running.' : err.message,
-      isNetwork ? `Tried to reach: ${baseUrl}` : ''
-    );
-  } finally {
-    submitBtn.disabled = false;
-    submitLabel.textContent = 'Optimize Routes';
-  }
-}
-
-function showToast(msg, type = '') {
-  const toast = document.getElementById('toast');
-  const toastMsg = document.getElementById('toast-msg');
-  toast.className = `toast ${type}`;
-  toastMsg.textContent = msg;
-  toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 3000);
-}
-
-async function handleClear() {
-  const baseUrl = document.getElementById('backend-url').value.replace(/\/$/, '');
-  const clearBtn = document.getElementById('clear-btn');
-
-  clearBtn.disabled = true;
-  clearBtn.querySelector('span') && null;
-
-  try {
-    const res = await fetch(`${baseUrl}/llm-inputs`, { method: 'DELETE' });
-    if (!res.ok) throw new Error(`Server returned ${res.status}`);
-    const data = await res.json();
-    const count = data.deleted || 0;
-
-    // Also reset the UI
-    textarea.value = '';
-    charCount.textContent = '0 / 800';
-    resultsEl.style.display = 'none';
-    resultsEl.classList.remove('visible');
-    pipelineEl.style.display = 'none';
-    hideError();
-    metricsRow.innerHTML = '';
-    routesContainer.innerHTML = '';
-    document.getElementById('summary-card').style.display = 'none';
-
-    showToast(`Queue cleared — ${count} record${count !== 1 ? 's' : ''} deleted`, 'success');
-  } catch (err) {
-    showToast('Failed to clear queue: ' + err.message, 'error');
-  } finally {
-    clearBtn.disabled = false;
-  }
-}
-
-function renderResults(data) {
-  metricsRow.innerHTML = '';
-  routesContainer.innerHTML = '';
-
-  const summary = data.summary || '';
-  const plan = data.plan || {};
-  const isValid = data.valid;
-  const deliveries = data.deliveries || {};
-  const totalCost = plan.total_cost;
-  const totalDist = plan.total_distance;
-  const totalTime = plan.total_time;
-  const bestPlan = plan.best_plan || [];
-  const vehiclePlan = plan.vehicle_plan || [];
-  const routePlan = plan.route_plan || [];
-  const perVehicle = plan.per_vehicle || [];
-
-  // Valid badge
-  const badge = document.getElementById('valid-badge');
-  if (isValid === true) {
-    badge.className = 'valid-badge ok';
-    badge.textContent = '✓ Plan Valid';
-  } else if (isValid === false) {
-    badge.className = 'valid-badge warn';
-    badge.textContent = '⚠ Needs Review';
-  } else {
-    badge.style.display = 'none';
-  }
-
-  // Metrics
-  const metrics = [];
-  if (totalCost != null) metrics.push({ label: 'Total Cost', value: `PKR ${Math.round(totalCost).toLocaleString()}`, cls: 'accent' });
-  if (totalDist != null) metrics.push({ label: 'Distance', value: `${totalDist.toFixed(1)} km`, cls: '' });
-  if (totalTime != null) metrics.push({ label: 'Est. Time', value: `${totalTime.toFixed(1)} hrs`, cls: 'purple' });
-  const activeRoutes = bestPlan.filter(r => r && r.length > 0).length;
-  if (activeRoutes) metrics.push({ label: 'Vehicles Used', value: activeRoutes, cls: 'success' });
-
-  metrics.forEach(m => {
-    metricsRow.innerHTML += `
-      <div class="metric-card">
-        <div class="metric-label">${m.label}</div>
-        <div class="metric-value ${m.cls}">${m.value}</div>
-      </div>`;
-  });
-
-  // AI Summary
-  const summaryCard = document.getElementById('summary-card');
-  const summaryTextEl = document.getElementById('summary-text');
-  if (summary) {
-    summaryCard.style.display = 'block';
-    summaryTextEl.textContent = summary;
-  }
-
-  // Route cards
-  bestPlan.forEach((route, i) => {
-    if (!route || route.length === 0) return;
-
-    const vehicle = (vehiclePlan[i] || 'truck').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    const routeType = (routePlan[i] || 'city').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    const vMeta = perVehicle[i] || {};
-    const dist = vMeta.distance != null ? `${vMeta.distance.toFixed(1)} km` : '—';
-    const cost = vMeta.cost != null ? `PKR ${Math.round(vMeta.cost).toLocaleString()}` : '—';
-    const time = vMeta.time_hours != null ? `${vMeta.time_hours.toFixed(2)} hrs` : '—';
-
-    const stopsHtml = route.map((stop, si) => `
-      <div class="stop-item">
-        <div class="stop-dot"></div>
-        <div class="stop-name">${stop}</div>
-        <div class="stop-detail">Stop ${si + 1} of ${route.length} &nbsp;·&nbsp; ${deliveries[stop] || 1} pkg${(deliveries[stop] || 1) !== 1 ? 's' : ''}</div>
-      </div>`).join('');
-
-    const card = document.createElement('div');
-    card.className = 'route-card';
-    card.innerHTML = `
-      <div class="route-card-header" onclick="this.parentElement.classList.toggle('open')">
-        <div class="vehicle-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/>
-            <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
-          </svg>
-        </div>
-        <div class="route-meta">
-          <div class="route-name">Vehicle ${i + 1} — ${vehicle}</div>
-          <div class="route-subtitle">${routeType} route &nbsp;·&nbsp; ${route.length} stop${route.length !== 1 ? 's' : ''}</div>
-        </div>
-        <div class="route-stats">
-          <div class="route-stat"><div class="route-stat-val">${dist}</div><div class="route-stat-lbl">Distance</div></div>
-          <div class="route-stat"><div class="route-stat-val">${cost}</div><div class="route-stat-lbl">Cost</div></div>
-          <div class="route-stat"><div class="route-stat-val">${time}</div><div class="route-stat-lbl">Time</div></div>
-        </div>
-        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-      </div>
-      <div class="route-body">
-        <div class="stop-list">${stopsHtml}</div>
-      </div>`;
+function renderResults(data){
+  metricsRow.innerHTML='';routesContainer.innerHTML='';
+  const summary=data.summary||'',plan=data.plan||{},isValid=data.valid,deliveries=data.deliveries||{};
+  const totalCost=plan.total_cost,totalDist=plan.total_distance,totalTime=plan.total_time;
+  const bestPlan=plan.best_plan||[],vehiclePlan=plan.vehicle_plan||[],routePlan=plan.route_plan||[],perVehicle=plan.per_vehicle||[];
+  const badge=document.getElementById('valid-badge');
+  if(isValid===true){badge.className='valid-badge ok';badge.textContent='✓ Plan Valid';}
+  else if(isValid===false){badge.className='valid-badge warn';badge.textContent='⚠ Needs Review';}
+  else{badge.style.display='none';}
+  const metrics=[];
+  if(totalCost!=null)metrics.push({label:'Total Cost',value:`PKR ${Math.round(totalCost).toLocaleString()}`,cls:'accent'});
+  if(totalDist!=null)metrics.push({label:'Distance',value:`${totalDist.toFixed(1)} km`,cls:''});
+  if(totalTime!=null)metrics.push({label:'Est. Time',value:`${totalTime.toFixed(1)} hrs`,cls:'purple'});
+  const ar=bestPlan.filter(r=>r&&r.length>0).length;
+  if(ar)metrics.push({label:'Vehicles',value:ar,cls:'success'});
+  metrics.forEach(m=>{metricsRow.innerHTML+=`<div class="metric-card"><div class="metric-label">${m.label}</div><div class="metric-value ${m.cls}">${m.value}</div></div>`;});
+  const sc=document.getElementById('summary-card');
+  if(summary){sc.style.display='block';document.getElementById('summary-text').textContent=summary;}
+  bestPlan.forEach((route,i)=>{
+    if(!route||route.length===0)return;
+    const vehicle=(vehiclePlan[i]||'truck').replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+    const routeType=(routePlan[i]||'city').replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+    const vm=perVehicle[i]||{};
+    const dist=vm.distance!=null?`${vm.distance.toFixed(1)} km`:'—';
+    const cost=vm.cost!=null?`PKR ${Math.round(vm.cost).toLocaleString()}`:'—';
+    const time=vm.time_hours!=null?`${vm.time_hours.toFixed(2)} hrs`:'—';
+    const stopsHtml=route.map((stop,si)=>`<div class="stop-item"><div class="stop-dot"></div><div class="stop-name">${stop}</div><div class="stop-detail">Stop ${si+1} of ${route.length} · ${deliveries[stop]||1} pkg${(deliveries[stop]||1)!==1?'s':''}</div></div>`).join('');
+    const card=document.createElement('div');card.className='route-card';
+    card.innerHTML=`<div class="route-card-header" onclick="this.parentElement.classList.toggle('open')"><div class="vehicle-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div><div class="route-meta"><div class="route-name">Vehicle ${i+1} — ${vehicle}</div><div class="route-subtitle">${routeType} route · ${route.length} stop${route.length!==1?'s':''}</div></div><div class="route-stats"><div class="route-stat"><div class="route-stat-val">${dist}</div><div class="route-stat-lbl">Distance</div></div><div class="route-stat"><div class="route-stat-val">${cost}</div><div class="route-stat-lbl">Cost</div></div><div class="route-stat"><div class="route-stat-val">${time}</div><div class="route-stat-lbl">Time</div></div></div><svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div><div class="route-body"><div class="stop-list">${stopsHtml}</div></div>`;
     routesContainer.appendChild(card);
   });
-
-  resultsEl.style.display = 'block';
-  resultsEl.classList.add('visible');
-  resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  resultsEl.style.display='block';resultsEl.classList.add('visible');
+  resultsEl.scrollIntoView({behavior:'smooth',block:'start'});
 }
 </script>
 </body>
