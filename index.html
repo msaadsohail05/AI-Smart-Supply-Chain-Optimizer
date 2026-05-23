@@ -513,6 +513,45 @@
   .tech-tag { display: inline-flex; align-items: center; gap: 4px; }
   .tech-tag::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--text-muted); }
 
+  .btn-clear {
+    width: 100%; padding: 12px;
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--font-body); font-size: 14px;
+    font-weight: 400; cursor: pointer;
+    transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    margin-top: 10px;
+  }
+
+  .btn-clear:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+    background: rgba(248,113,113,0.05);
+  }
+
+  .btn-clear:active { transform: scale(0.99); }
+  .btn-clear:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-clear svg { width: 15px; height: 15px; }
+
+  .toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 20px;
+    font-size: 13px; color: var(--text-secondary);
+    font-family: var(--font-mono);
+    display: flex; align-items: center; gap: 8px;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    opacity: 0; z-index: 100; white-space: nowrap;
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  .toast.success { border-color: rgba(52,211,153,0.3); color: var(--success); }
+  .toast.error { border-color: rgba(248,113,113,0.3); color: var(--danger); }
+  .toast-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
   @media (max-width: 600px) {
     .route-stats { display: none; }
     .metrics-row { grid-template-columns: 1fr 1fr; }
@@ -596,6 +635,18 @@
     </svg>
     <span id="submit-label">Optimize Routes</span>
   </button>
+
+  <button class="btn-clear" id="clear-btn" onclick="handleClear()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+    </svg>
+    Clear queue &amp; start fresh
+  </button>
+
+  <div class="toast" id="toast">
+    <span class="toast-dot"></span>
+    <span id="toast-msg"></span>
+  </div>
 
   <!-- PIPELINE PROGRESS -->
   <div class="pipeline" id="pipeline" style="display:none; margin-top:20px;">
@@ -793,6 +844,47 @@ async function handleSubmit() {
   } finally {
     submitBtn.disabled = false;
     submitLabel.textContent = 'Optimize Routes';
+  }
+}
+
+function showToast(msg, type = '') {
+  const toast = document.getElementById('toast');
+  const toastMsg = document.getElementById('toast-msg');
+  toast.className = `toast ${type}`;
+  toastMsg.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+async function handleClear() {
+  const baseUrl = document.getElementById('backend-url').value.replace(/\/$/, '');
+  const clearBtn = document.getElementById('clear-btn');
+
+  clearBtn.disabled = true;
+  clearBtn.querySelector('span') && null;
+
+  try {
+    const res = await fetch(`${baseUrl}/llm-inputs`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`Server returned ${res.status}`);
+    const data = await res.json();
+    const count = data.deleted || 0;
+
+    // Also reset the UI
+    textarea.value = '';
+    charCount.textContent = '0 / 800';
+    resultsEl.style.display = 'none';
+    resultsEl.classList.remove('visible');
+    pipelineEl.style.display = 'none';
+    hideError();
+    metricsRow.innerHTML = '';
+    routesContainer.innerHTML = '';
+    document.getElementById('summary-card').style.display = 'none';
+
+    showToast(`Queue cleared — ${count} record${count !== 1 ? 's' : ''} deleted`, 'success');
+  } catch (err) {
+    showToast('Failed to clear queue: ' + err.message, 'error');
+  } finally {
+    clearBtn.disabled = false;
   }
 }
 
