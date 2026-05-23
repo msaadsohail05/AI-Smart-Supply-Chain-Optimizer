@@ -19,26 +19,32 @@ def validate(
 ) -> bool:
     """
     Validate a delivery plan against all constraints.
-
-    Args:
-        plan: List of routes, each route is a list of locations
-        deliveries: Dictionary of location -> package count
-        vehicle_plan: List of vehicle types for each route
-        route_plan: List of route types for each route
-        deadlines: Optional dict of location -> deadline (minutes or HH:MM)
-        distance_lookup: Optional dict for distances between locations
-        time_lookup: Optional dict for travel times between locations
-        depot: Warehouse name (defaults to WAREHOUSE_NAME)
-        verbose: Print validation details
-
-    Returns:
-        True if plan is valid, False otherwise
     """
     depot = depot or WAREHOUSE_NAME
+    
+    # Filter out empty routes for validation
+    non_empty_plan = []
+    non_empty_vehicles = []
+    non_empty_route_types = []
+    
+    for i, route in enumerate(plan):
+        if route:  # Only include non-empty routes
+            non_empty_plan.append(route)
+            if i < len(vehicle_plan):
+                non_empty_vehicles.append(vehicle_plan[i])
+            if i < len(route_plan):
+                non_empty_route_types.append(route_plan[i])
+    
+    # If no non-empty routes, validation fails
+    if not non_empty_plan:
+        if verbose:
+            print("CSP: No non-empty routes found")
+        return False
+    
     all_checks_passed = True
 
     # Check 1: All deliveries are covered exactly once
-    coverage_ok, missing, duplicates = _check_coverage(plan, deliveries)
+    coverage_ok, missing, duplicates = _check_coverage(non_empty_plan, deliveries)
     if not coverage_ok:
         if verbose:
             if missing:
@@ -48,31 +54,26 @@ def validate(
         all_checks_passed = False
 
     # Check 2: Vehicle capacity constraints
-    capacity_ok, overloads = _check_capacity(plan, deliveries, vehicle_plan)
+    capacity_ok, overloads = _check_capacity(non_empty_plan, deliveries, non_empty_vehicles)
     if not capacity_ok:
         if verbose:
             for vehicle_idx, total, capacity in overloads:
-                print(
-                    f"CSP: Vehicle {vehicle_idx + 1} overloaded: {total}/{capacity} packages"
-                )
+                print(f"CSP: Vehicle {vehicle_idx + 1} overloaded: {total}/{capacity} packages")
         all_checks_passed = False
 
     # Check 3: Deadline constraints (if provided)
     if deadlines and (distance_lookup or time_lookup):
         deadlines_ok, missed_deadlines = _check_deadlines(
-            plan, deadlines, distance_lookup, time_lookup, depot
+            non_empty_plan, deadlines, distance_lookup, time_lookup, depot
         )
         if not deadlines_ok:
             if verbose:
                 for loc, eta, deadline in missed_deadlines:
-                    print(
-                        f"CSP: Deadline missed for {loc}: ETA={eta:.0f}min, "
-                        f"Deadline={deadline}min"
-                    )
+                    print(f"CSP: Deadline missed for {loc}: ETA={eta:.0f}min, Deadline={deadline}min")
             all_checks_passed = False
 
     # Check 4: Route consistency
-    consistency_ok, invalid = _check_route_consistency(plan)
+    consistency_ok, invalid = _check_route_consistency(non_empty_plan)
     if not consistency_ok:
         if verbose:
             for orig, dest in invalid:
