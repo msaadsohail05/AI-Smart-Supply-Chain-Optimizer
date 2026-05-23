@@ -93,10 +93,8 @@ inputarr=[
         "fragile goods",
         "medical supplies",
         "urgency"
-      ]
+      ],
 
-     # this api
-      summary payload of the delivery plan in json
-      
-  ]
-}
+     # this api summary payload of the delivery plan in json
+    }
+]
