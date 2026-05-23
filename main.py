@@ -6,16 +6,30 @@ from dotenv import load_dotenv
 from pymongo import MongoClient
 from pydantic import BaseModel
 
-from services.astar_service import astar
-from services.csp_service import validate
-from services.ga_service import (
+from backend.project.services.astar_service import astar
+from backend.project.services.csp_service import validate
+from backend.project.services.ga_service import (
     genetic_algorithm,
     normalize_route_type,
     normalize_vehicle_type,
 )
-from services.graph_service import build_graph
-from services.llm_service import parse_input, summarize_plan
-from services.map_api_service import fetch_graph
+from backend.project.services.graph_service import build_graph
+from backend.project.services.llm_service import parse_input, summarize_plan
+from backend.project.services.map_api_service import fetch_graph
+
+from fastapi.middleware.cors import CORSMiddleware
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins for testing
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+from fastapi.responses import HTMLResponse
+
+
 
 load_dotenv()
 
@@ -27,10 +41,12 @@ MONGO_URI = os.getenv("MONGO_URI")
 MONGO_DB = os.getenv("MONGO_DB", "ai_supply_chain")
 MONGO_COLLECTION = os.getenv("MONGO_COLLECTION", "delivery_inputs")
 
+
 _mongo_client = MongoClient(MONGO_URI) if MONGO_URI else None
 _collection = (
     _mongo_client[MONGO_DB][MONGO_COLLECTION] if _mongo_client else None
 )
+
 
 
 class UserInput(BaseModel):
@@ -57,6 +73,38 @@ class RouteRequest(BaseModel):
 @app.get("/")
 def root():
     return {"status": "ok"}
+
+# Add this endpoint to serve your frontend
+@app.get("/ui")
+async def serve_frontend():
+    """Serve the frontend HTML interface"""
+    # Look for index.html in different possible locations
+    possible_paths = [
+        os.path.join(os.path.dirname(__file__), "index.html"),  # Same folder as main.py
+        os.path.join(os.path.dirname(__file__), "frontend", "index.html"),  # frontend folder
+        os.path.join(os.path.dirname(__file__), "..", "index.html"),  # Parent folder
+        "index.html",  # Current working directory
+    ]
+    
+    for html_path in possible_paths:
+        if os.path.exists(html_path):
+            with open(html_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            return HTMLResponse(content=content)
+    
+    return HTMLResponse(content=f"""
+    <html>
+        <head><title>Frontend Not Found</title></head>
+        <body>
+            <h1>❌ index.html not found</h1>
+            <p>Please create an <code>index.html</code> file in one of these locations:</p>
+            <ul>
+                {''.join(f'<li><code>{path}</code></li>' for path in possible_paths)}
+            </ul>
+            <p>Then refresh this page.</p>
+        </body>
+    </html>
+    """, status_code=404)
 
 #saad's code
 @app.post("/test-llm")
@@ -144,24 +192,39 @@ def route(request: RouteRequest):
 
 
 def _deliveries_from_extraction(extracted: Dict[str, object]) -> Dict[str, int]:
+    """Extract deliveries from LLM output, handling both string and dict formats."""
     destinations = extracted.get("destinations") or []
     packages = extracted.get("packages")
+    
     if not destinations:
         return {}
-
-    if isinstance(packages, int) and packages > 0:
-        # Even split for per-location delivery counts.
-        base = packages // len(destinations)
-        remainder = packages % len(destinations)
+    
+    # Case 1: destinations is a list of strings
+    if destinations and isinstance(destinations[0], str):
+        if isinstance(packages, int) and packages > 0:
+            base = packages // len(destinations)
+            remainder = packages % len(destinations)
+            deliveries = {}
+            for index, destination in enumerate(destinations):
+                deliveries[destination] = base + (1 if index < remainder else 0)
+            return deliveries
+        return {destination: 1 for destination in destinations}
+    
+    # Case 2: destinations is a list of dicts (each with location, packages, deadline)
+    elif destinations and isinstance(destinations[0], dict):
         deliveries = {}
-        for index, destination in enumerate(destinations):
-            deliveries[destination] = base + (1 if index < remainder else 0)
+        for dest_dict in destinations:
+            location = dest_dict.get("location", "")
+            pkg_count = dest_dict.get("packages", 1)
+            if location:
+                deliveries[location] = pkg_count
         return deliveries
-
-    return {destination: 1 for destination in destinations}
+    
+    return {}
 
 
 def _deliveries_from_inputs(items: List[Dict[str, object]]) -> Dict[str, int]:
+    """Merge deliveries from multiple items."""
     merged: Dict[str, int] = {}
     for item in items:
         deliveries = _deliveries_from_extraction(item)
@@ -174,16 +237,64 @@ def _deadlines_from_inputs(
     items: List[Dict[str, object]],
     deliveries: Dict[str, int],
 ) -> Dict[str, str]:
+    """Extract deadlines from LLM output, handling both formats."""
     deadlines: Dict[str, str] = {}
+    
     for item in items:
         deadline_value = item.get("deadline") if isinstance(item, dict) else None
+        
+        # Handle destinations in either format
         destinations = item.get("destinations") if isinstance(item, dict) else None
-        if not deadline_value or not isinstance(destinations, list):
+        
+        if not deadline_value or not destinations:
             continue
+        
+        # Check if destinations are dicts or strings
         for destination in destinations:
-            if destination in deliveries and destination not in deadlines:
-                deadlines[destination] = str(deadline_value)
+            if isinstance(destination, dict):
+                dest_name = destination.get("location", "")
+                dest_deadline = destination.get("deadline")
+                if dest_name in deliveries and dest_name not in deadlines:
+                    deadlines[dest_name] = str(dest_deadline or deadline_value)
+            elif isinstance(destination, str):
+                if destination in deliveries and destination not in deadlines:
+                    deadlines[destination] = str(deadline_value)
+    
     return deadlines
+
+
+def _collect_destinations_from_items(items: List[Dict[str, object]]) -> List[str]:
+    """Collect all unique destination names from items (handles both formats)."""
+    destinations = []
+    for item in items:
+        dests = item.get("destinations", [])
+        for dest in dests:
+            if isinstance(dest, dict):
+                loc = dest.get("location", "")
+                if loc:
+                    destinations.append(loc)
+            elif isinstance(dest, str):
+                destinations.append(dest)
+    return list(set(destinations))
+
+
+def _get_total_packages_from_items(items: List[Dict[str, object]]) -> int:
+    """Get total packages from items (handles both formats)."""
+    total = 0
+    for item in items:
+        # Check for packages at top level
+        packages = item.get("packages")
+        if isinstance(packages, int):
+            total += packages
+        else:
+            # Check for packages in destination dicts
+            dests = item.get("destinations", [])
+            for dest in dests:
+                if isinstance(dest, dict):
+                    total += dest.get("packages", 1)
+                else:
+                    total += 1
+    return total if total > 0 else 1
 
 
 def _build_lookup_tables(graph: Dict[str, Dict[str, Dict[str, float]]]):
@@ -247,7 +358,6 @@ def _run_llm_pipeline(request: ProcessRequest) -> Dict[str, object]:
         return {"error": "no_deliveries"}
 
     deadlines = _deadlines_from_inputs(payloads, deliveries)
-
     locations = [WAREHOUSE_NAME] + list(deliveries.keys())
 
     coordinates = _sanitize_coordinates(request.coordinates)
@@ -274,14 +384,24 @@ def _run_llm_pipeline(request: ProcessRequest) -> Dict[str, object]:
     budget, time_limit, priority, constraints, fixed_vehicle, fixed_route = _plan_inputs(
         payloads
     )
+    
+    # Auto-calculate optimal number of vehicles
+    total_packages = sum(deliveries.values())
+    # Each vehicle can carry ~15 packages on average
+    optimal_vehicles = max(1, min(5, (total_packages + 14) // 15))
+    
+    # Use the larger of requested or optimal
+    num_vehicles = max(request.num_vehicles, optimal_vehicles)
+    print(f"📊 Total packages: {total_packages}, Using {num_vehicles} vehicles")
 
+    # Run GA multiple times and pick best
     ga_attempts = int(os.getenv("GA_ATTEMPTS", "5"))
     candidates = []
-    for _ in range(max(1, ga_attempts)):
+    for attempt in range(max(1, ga_attempts)):
         candidate = genetic_algorithm(
             deliveries=deliveries,
             distance_lookup=distance_lookup,
-            num_vehicles=request.num_vehicles,
+            num_vehicles=num_vehicles,
             budget=budget,
             time_limit=time_limit,
             priority=priority,
@@ -289,11 +409,17 @@ def _run_llm_pipeline(request: ProcessRequest) -> Dict[str, object]:
             fixed_vehicle=fixed_vehicle,
             fixed_route=fixed_route,
         )
+        
+        # Filter out empty vehicles for validation
+        non_empty_routes = [route for route in candidate["best_plan"] if route]
+        non_empty_vehicles = [candidate["vehicle_plan"][i] for i, route in enumerate(candidate["best_plan"]) if route]
+        non_empty_route_types = [candidate["route_plan"][i] for i, route in enumerate(candidate["best_plan"]) if route]
+        
         is_valid = validate(
-            candidate["best_plan"],
+            non_empty_routes,
             deliveries,
-            candidate["vehicle_plan"],
-            candidate["route_plan"],
+            non_empty_vehicles,
+            non_empty_route_types,
             deadlines=deadlines or None,
             distance_lookup=distance_lookup if deadlines else None,
         )
