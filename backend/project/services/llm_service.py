@@ -1,6 +1,6 @@
 import json
 import os
-
+from openai import OpenAI
 
 def parse_input(data, use_llm=True, llm_config=None):
 	if data is None:
@@ -28,7 +28,7 @@ def summarize_plan(data, llm_config=None):
 		"GROQ_MODEL", "llama-3.3-70b-versatile"
 	)
 
-	from openai import OpenAI
+	
 
 	client = OpenAI(
 		api_key=api_key,
